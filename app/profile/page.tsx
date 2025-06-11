@@ -38,7 +38,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<Omit<User, "password"> | null>(null);
   const [formData, setFormData] = useState<Partial<User>>({
     name: "",
     email: "",
