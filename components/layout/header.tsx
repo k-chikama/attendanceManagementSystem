@@ -1,0 +1,217 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Calendar,
+  Clock,
+  FileText,
+  Home,
+  LogOut,
+  Menu,
+  User,
+  X,
+} from "lucide-react";
+import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { User as UserType, logoutUser } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { useToast } from "@/hooks/use-toast";
+
+type SafeUser = Omit<UserType, "password">;
+
+interface HeaderProps {
+  user: SafeUser;
+}
+
+const navigationItems = [
+  {
+    name: "ダッシュボード",
+    href: "/dashboard",
+    icon: Home,
+  },
+  {
+    name: "勤怠打刻",
+    href: "/time-clock",
+    icon: Clock,
+  },
+  {
+    name: "勤怠管理",
+    href: "/attendance",
+    icon: Calendar,
+  },
+  {
+    name: "休暇申請",
+    href: "/leave",
+    icon: FileText,
+  },
+  {
+    name: "レポート",
+    href: "/reports",
+    icon: FileText,
+  },
+  {
+    name: "シフト表",
+    href: "/shifts",
+    icon: Calendar,
+  },
+] as const;
+
+export default function Header({ user }: HeaderProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      logoutUser();
+      toast({
+        title: "ログアウトしました",
+        description: "ログインページにリダイレクトします。",
+      });
+      router.push("/login");
+    } catch (error) {
+      console.error("ログアウトエラー:", error);
+      toast({
+        variant: "destructive",
+        title: "エラー",
+        description: "ログアウトに失敗しました。",
+      });
+    } finally {
+      setIsLoggingOut(false);
+      setIsOpen(false);
+    }
+  };
+
+  const handleNavigation = () => {
+    setIsOpen(false);
+  };
+
+  return (
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
+        <div className="flex h-16 items-center justify-between">
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-4 min-w-0">
+            <Link
+              href="/dashboard"
+              className="flex items-center space-x-1 sm:space-x-2 transition-colors hover:text-primary shrink-0"
+            >
+              <span className="text-sm sm:text-base md:text-lg font-semibold tracking-tight whitespace-nowrap">
+                勤怠管理システム
+              </span>
+            </Link>
+            <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2 overflow-x-auto scrollbar-hide min-w-0 flex-1">
+              {navigationItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center px-2 sm:px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap shrink-0 min-w-[90px] sm:min-w-[100px] justify-center",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 shrink-0">
+            <div className="hidden lg:flex items-center gap-1 sm:gap-2">
+              <Link
+                href="/profile"
+                className="flex items-center text-sm text-muted-foreground hover:text-foreground whitespace-nowrap px-2 sm:px-3 py-2"
+              >
+                <User className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                {user.name}さん
+              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="text-muted-foreground hover:text-foreground whitespace-nowrap px-2 sm:px-3 py-2"
+              >
+                <LogOut className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                {isLoggingOut ? "ログアウト中..." : "ログアウト"}
+              </Button>
+            </div>
+
+            {/* モバイルメニュー */}
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden -mr-1">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">メニューを開く</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+                <SheetHeader>
+                  <SheetTitle>メニュー</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4 sm:mt-6 flex flex-col space-y-2 sm:space-y-4">
+                  {navigationItems.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={handleNavigation}
+                        className={cn(
+                          "flex items-center px-3 sm:px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        )}
+                      >
+                        <item.icon className="h-4 w-4 mr-2" />
+                        <span>{item.name}</span>
+                      </Link>
+                    );
+                  })}
+                  <div className="border-t pt-3 sm:pt-4 mt-3 sm:mt-4">
+                    <Link
+                      href="/profile"
+                      onClick={handleNavigation}
+                      className="flex items-center px-3 sm:px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md"
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      {user.name}さん
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLogout}
+                      disabled={isLoggingOut}
+                      className="w-full justify-start text-muted-foreground hover:text-foreground px-3 sm:px-4 py-2"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      {isLoggingOut ? "ログアウト中..." : "ログアウト"}
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
