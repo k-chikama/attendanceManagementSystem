@@ -136,23 +136,41 @@ export default function TimeClockPage() {
 
   // Calculate break time
   const calculateBreakTime = () => {
-    if (!attendance || !attendance.breakStart || !attendance.breakEnd) return 0;
-    const start = new Date(attendance.breakStart);
-    const end = new Date(attendance.breakEnd);
+    if (!attendance?.breakStart?.length || !attendance?.breakEnd?.length)
+      return 0;
+    const lastBreakStart = attendance.breakStart[
+      attendance.breakStart.length - 1
+    ] as string;
+    const lastBreakEnd = attendance.breakEnd[
+      attendance.breakEnd.length - 1
+    ] as string;
+    const start = new Date(`${attendance.date}T${lastBreakStart}`);
+    const end = new Date(`${attendance.date}T${lastBreakEnd}`);
     return Math.floor((end.getTime() - start.getTime()) / 1000 / 60);
   };
 
   // Format time for display
-  const formatTime = (time: string | null | undefined) => {
+  const formatTime = (time: string | string[] | null | undefined) => {
     if (!time) return "-";
-    return new Date(time).toLocaleTimeString("ja-JP", {
+    if (Array.isArray(time)) {
+      if (!time.length) return "-";
+      const lastTime = time[time.length - 1];
+      return new Date(`${attendance?.date}T${lastTime}`).toLocaleTimeString(
+        "ja-JP",
+        {
+          hour: "2-digit",
+          minute: "2-digit",
+        }
+      );
+    }
+    return new Date(`${attendance?.date}T${time}`).toLocaleTimeString("ja-JP", {
       hour: "2-digit",
       minute: "2-digit",
     });
   };
 
   const isOnBreak =
-    attendance?.breakStart?.length > attendance?.breakEnd?.length;
+    attendance?.breakStart?.length > (attendance?.breakEnd?.length ?? 0);
 
   if (!user) {
     return null;
