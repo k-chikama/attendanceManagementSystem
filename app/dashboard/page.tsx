@@ -64,7 +64,7 @@ const generateWeeklyData = (records: AttendanceRecord[]) => {
 
 // Generate attendance summary by status
 const generateStatusData = (records: AttendanceRecord[]) => {
-  const countByStatus = {
+  const countByStatus: Record<AttendanceRecord["status"], number> = {
     present: 0,
     late: 0,
     absent: 0,
@@ -82,7 +82,7 @@ const generateStatusData = (records: AttendanceRecord[]) => {
     { name: "欠勤", value: countByStatus.absent, color: "#EF4444" },
     { name: "休暇", value: countByStatus.leave, color: "#6366F1" },
     { name: "休日", value: countByStatus.holiday, color: "#8B5CF6" },
-  ];
+  ] as const;
 };
 
 // Custom tooltip for charts

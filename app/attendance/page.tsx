@@ -184,18 +184,19 @@ export default function AttendancePage() {
   };
 
   // Format break times as a string
-  const formatBreakTimes = (starts: string[] | null, ends: string[] | null) => {
-    if (!starts || !ends) return "-";
+  const formatBreakTimes = (starts: string[], ends: string[]) => {
+    if (!starts || !ends || starts.length === 0 || ends.length === 0)
+      return "-";
 
     const breakCount = Math.min(starts.length, ends.length);
-    if (breakCount === 0) return "-";
-
     const breakStrings = [];
     for (let i = 0; i < breakCount; i++) {
-      breakStrings.push(`${starts[i]}〜${ends[i]}`);
+      if (starts[i] && ends[i]) {
+        breakStrings.push(`${starts[i]}〜${ends[i]}`);
+      }
     }
 
-    return breakStrings.join(", ");
+    return breakStrings.length > 0 ? breakStrings.join(", ") : "-";
   };
 
   return (

@@ -138,12 +138,10 @@ export default function TimeClockPage() {
   const calculateBreakTime = () => {
     if (!attendance?.breakStart?.length || !attendance?.breakEnd?.length)
       return 0;
-    const lastBreakStart = attendance.breakStart[
-      attendance.breakStart.length - 1
-    ] as string;
-    const lastBreakEnd = attendance.breakEnd[
-      attendance.breakEnd.length - 1
-    ] as string;
+    const lastBreakStart =
+      attendance.breakStart[attendance.breakStart.length - 1];
+    const lastBreakEnd = attendance.breakEnd[attendance.breakEnd.length - 1];
+    if (!lastBreakStart || !lastBreakEnd) return 0;
     const start = new Date(`${attendance.date}T${lastBreakStart}`);
     const end = new Date(`${attendance.date}T${lastBreakEnd}`);
     return Math.floor((end.getTime() - start.getTime()) / 1000 / 60);
