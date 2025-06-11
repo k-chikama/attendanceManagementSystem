@@ -227,7 +227,7 @@ export default function TimeClockPage() {
               </div>
 
               <div className="mt-6 space-y-4">
-                {!attendance?.clockIn ? (
+                {!attendance || !attendance.clockIn ? (
                   <Button
                     className="w-full"
                     size="lg"
@@ -239,7 +239,7 @@ export default function TimeClockPage() {
                   </Button>
                 ) : !attendance.clockOut ? (
                   <>
-                    {!attendance.breakStart ? (
+                    {!isOnBreak ? (
                       <Button
                         className="w-full"
                         size="lg"
@@ -249,7 +249,7 @@ export default function TimeClockPage() {
                         <Coffee className="mr-2 h-5 w-5" />
                         休憩開始
                       </Button>
-                    ) : !attendance.breakEnd ? (
+                    ) : (
                       <Button
                         className="w-full"
                         size="lg"
@@ -259,17 +259,16 @@ export default function TimeClockPage() {
                         <Coffee className="mr-2 h-5 w-5" />
                         休憩終了
                       </Button>
-                    ) : (
-                      <Button
-                        className="w-full"
-                        size="lg"
-                        onClick={handleClockOut}
-                        disabled={isSubmitting}
-                      >
-                        <LogOut className="mr-2 h-5 w-5" />
-                        退勤
-                      </Button>
                     )}
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={handleClockOut}
+                      disabled={isSubmitting || isOnBreak}
+                    >
+                      <LogOut className="mr-2 h-5 w-5" />
+                      退勤
+                    </Button>
                   </>
                 ) : (
                   <div className="text-center text-muted-foreground">
