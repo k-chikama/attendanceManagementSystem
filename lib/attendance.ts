@@ -57,20 +57,30 @@ const mockLeaveRequests: LeaveRequest[] = [
   // Add more mock records as needed
 ];
 
-// ローカルストレージのキー
+// Constants
 const STORAGE_KEY = "attendance_records";
 
 // ローカルストレージからデータを取得
 function getStoredRecords(): AttendanceRecord[] {
   if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error("Failed to get stored records:", error);
+    return [];
+  }
 }
 
 // ローカルストレージにデータを保存
 function saveRecords(records: AttendanceRecord[]): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  } catch (error) {
+    console.error("Failed to save records:", error);
+    throw new Error("勤怠記録の保存に失敗しました");
+  }
 }
 
 // Helper function to format date as YYYY-MM-DD

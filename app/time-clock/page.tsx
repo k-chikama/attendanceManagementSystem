@@ -42,7 +42,15 @@ export default function TimeClockPage() {
 
   const handleClockIn = async () => {
     const user = getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "エラー",
+        description: "ユーザー情報が見つかりません。再度ログインしてください。",
+      });
+      router.push("/login");
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -50,7 +58,7 @@ export default function TimeClockPage() {
       setAttendance(newRecord);
       toast({
         title: "出勤しました",
-        description: "本日の勤務を開始しました。",
+        description: `出勤時間: ${newRecord.clockIn}`,
       });
     } catch (error) {
       console.error("出勤エラー:", error);
