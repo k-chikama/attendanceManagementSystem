@@ -22,26 +22,37 @@ export default function TimeClockPage() {
   const { toast } = useToast();
   const [user, setUser] = useState<Omit<User, "password"> | null>(null);
   const [attendance, setAttendance] = useState<AttendanceRecord | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-      router.push("/login");
-      return;
-    }
-    setUser(currentUser);
-    loadAttendance(currentUser.id);
-  }, [router]);
+    const loadUserAndAttendance = async () => {
+      setIsLoading(true);
+      try {
+        const currentUser = getCurrentUser();
+        if (!currentUser) {
+          router.push("/login");
+          return;
+        }
+        setUser(currentUser);
+        const todayAttendance = getTodayAttendance(currentUser.id);
+        setAttendance(todayAttendance);
+      } catch (error) {
+        console.error("データの読み込みに失敗:", error);
+        toast({
+          variant: "destructive",
+          title: "エラー",
+          description: "データの読み込みに失敗しました",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const loadAttendance = (userId: string) => {
-    const todayAttendance = getTodayAttendance(userId);
-    setAttendance(todayAttendance);
-  };
+    loadUserAndAttendance();
+  }, [router, toast]);
 
   const handleClockIn = async () => {
-    const user = getCurrentUser();
     if (!user) {
       toast({
         variant: "destructive",
@@ -52,7 +63,7 @@ export default function TimeClockPage() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       const newRecord = createAttendanceRecord(user.id);
       setAttendance(newRecord);
@@ -69,7 +80,7 @@ export default function TimeClockPage() {
           error instanceof Error ? error.message : "出勤に失敗しました",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -240,10 +251,10 @@ export default function TimeClockPage() {
                     className="w-full"
                     size="lg"
                     onClick={handleClockIn}
-                    disabled={isLoading}
+                    disabled={isSubmitting}
                   >
                     <Clock className="mr-2 h-5 w-5" />
-                    出勤
+                    {isSubmitting ? "処理中..." : "出勤"}
                   </Button>
                 ) : !attendance.clockOut ? (
                   <>
@@ -255,7 +266,7 @@ export default function TimeClockPage() {
                         disabled={isSubmitting}
                       >
                         <Coffee className="mr-2 h-5 w-5" />
-                        休憩開始
+                        {isSubmitting ? "処理中..." : "休憩開始"}
                       </Button>
                     ) : (
                       <Button
@@ -265,7 +276,7 @@ export default function TimeClockPage() {
                         disabled={isSubmitting}
                       >
                         <Coffee className="mr-2 h-5 w-5" />
-                        休憩終了
+                        {isSubmitting ? "処理中..." : "休憩終了"}
                       </Button>
                     )}
                     <Button
@@ -275,7 +286,7 @@ export default function TimeClockPage() {
                       disabled={isSubmitting || isOnBreak}
                     >
                       <LogOut className="mr-2 h-5 w-5" />
-                      退勤
+                      {isSubmitting ? "処理中..." : "退勤"}
                     </Button>
                   </>
                 ) : (
