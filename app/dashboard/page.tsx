@@ -102,7 +102,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Dashboard() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<Omit<User, "password"> | null>(null);
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
