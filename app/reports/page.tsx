@@ -368,7 +368,9 @@ export default function ReportsPage() {
                       }}
                     />
                     <Tooltip
-                      formatter={(value) => [`${value.toFixed(1)} 時間`]}
+                      formatter={(value: any) => [
+                        `${Number(value).toFixed(1)} 時間`,
+                      ]}
                     />
                     <Legend />
                     <Bar
