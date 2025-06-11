@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentUser } from "@/lib/auth";
+import { User, getCurrentUser } from "@/lib/auth";
 import {
   getTodayAttendance,
   createAttendanceRecord,
   startBreak,
   endBreak,
   clockOut,
+  AttendanceRecord,
 } from "@/lib/attendance";
 import { Clock, Coffee, LogOut } from "lucide-react";
 import AppLayout from "@/components/layout/layout";
@@ -19,8 +20,8 @@ import AppLayout from "@/components/layout/layout";
 export default function TimeClockPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [user, setUser] = useState<any>(null);
-  const [attendance, setAttendance] = useState<any>(null);
+  const [user, setUser] = useState<Omit<User, "password"> | null>(null);
+  const [attendance, setAttendance] = useState<AttendanceRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -64,10 +65,10 @@ export default function TimeClockPage() {
     }
   };
 
-  const handleStartBreak = async () => {
-    if (!attendance) return;
+  const handleBreakStart = async () => {
+    if (!user || !attendance) return;
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       const updatedRecord = startBreak(attendance.id);
       setAttendance(updatedRecord);
@@ -80,18 +81,17 @@ export default function TimeClockPage() {
       toast({
         variant: "destructive",
         title: "エラー",
-        description:
-          error instanceof Error ? error.message : "休憩開始に失敗しました",
+        description: "休憩の開始に失敗しました。",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleEndBreak = async () => {
-    if (!attendance) return;
+  const handleBreakEnd = async () => {
+    if (!user || !attendance) return;
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       const updatedRecord = endBreak(attendance.id);
       setAttendance(updatedRecord);
@@ -104,18 +104,17 @@ export default function TimeClockPage() {
       toast({
         variant: "destructive",
         title: "エラー",
-        description:
-          error instanceof Error ? error.message : "休憩終了に失敗しました",
+        description: "休憩の終了に失敗しました。",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleClockOut = async () => {
-    if (!attendance) return;
+    if (!user || !attendance) return;
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       const updatedRecord = clockOut(attendance.id);
       setAttendance(updatedRecord);
@@ -128,17 +127,28 @@ export default function TimeClockPage() {
       toast({
         variant: "destructive",
         title: "エラー",
-        description:
-          error instanceof Error ? error.message : "退勤に失敗しました",
+        description: "退勤に失敗しました。",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const formatTime = (time: string | null) => {
-    if (!time) return "--:--";
-    return time;
+  // Calculate break time
+  const calculateBreakTime = () => {
+    if (!attendance || !attendance.breakStart || !attendance.breakEnd) return 0;
+    const start = new Date(attendance.breakStart);
+    const end = new Date(attendance.breakEnd);
+    return Math.floor((end.getTime() - start.getTime()) / 1000 / 60);
+  };
+
+  // Format time for display
+  const formatTime = (time: string | null | undefined) => {
+    if (!time) return "-";
+    return new Date(time).toLocaleTimeString("ja-JP", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const isOnBreak =
@@ -151,109 +161,101 @@ export default function TimeClockPage() {
   return (
     <AppLayout>
       <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl font-bold text-center">
-                勤怠打刻
-              </CardTitle>
+              <CardTitle className="text-2xl">勤怠管理</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-sm text-muted-foreground">
-                      出勤時間
-                    </div>
-                    <div className="text-2xl font-bold">
+                    <p className="text-sm text-muted-foreground">出勤時間</p>
+                    <p className="text-lg font-medium">
                       {formatTime(attendance?.clockIn)}
-                    </div>
+                    </p>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">
-                      退勤時間
-                    </div>
-                    <div className="text-2xl font-bold">
+                    <p className="text-sm text-muted-foreground">退勤時間</p>
+                    <p className="text-lg font-medium">
                       {formatTime(attendance?.clockOut)}
-                    </div>
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex flex-col space-y-4">
-                  {!attendance ? (
-                    <Button
-                      size="lg"
-                      onClick={handleClockIn}
-                      disabled={isLoading}
-                      className="w-full"
-                    >
-                      <Clock className="h-5 w-5 mr-2" />
-                      {isLoading ? "処理中..." : "出勤"}
-                    </Button>
-                  ) : !attendance.clockOut ? (
-                    <>
-                      {!isOnBreak ? (
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          onClick={handleStartBreak}
-                          disabled={isLoading}
-                          className="w-full"
-                        >
-                          <Coffee className="h-5 w-5 mr-2" />
-                          {isLoading ? "処理中..." : "休憩開始"}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          onClick={handleEndBreak}
-                          disabled={isLoading}
-                          className="w-full"
-                        >
-                          <Coffee className="h-5 w-5 mr-2" />
-                          {isLoading ? "処理中..." : "休憩終了"}
-                        </Button>
-                      )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">休憩開始</p>
+                    <p className="text-lg font-medium">
+                      {formatTime(attendance?.breakStart)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">休憩終了</p>
+                    <p className="text-lg font-medium">
+                      {formatTime(attendance?.breakEnd)}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">休憩時間</p>
+                  <p className="text-lg font-medium">
+                    {attendance?.breakStart && attendance?.breakEnd
+                      ? `${calculateBreakTime()}分`
+                      : "-"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                {!attendance?.clockIn ? (
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={handleClockIn}
+                    disabled={isLoading}
+                  >
+                    <Clock className="mr-2 h-5 w-5" />
+                    出勤
+                  </Button>
+                ) : !attendance.clockOut ? (
+                  <>
+                    {!attendance.breakStart ? (
                       <Button
+                        className="w-full"
+                        size="lg"
+                        onClick={handleBreakStart}
+                        disabled={isSubmitting}
+                      >
+                        <Coffee className="mr-2 h-5 w-5" />
+                        休憩開始
+                      </Button>
+                    ) : !attendance.breakEnd ? (
+                      <Button
+                        className="w-full"
+                        size="lg"
+                        onClick={handleBreakEnd}
+                        disabled={isSubmitting}
+                      >
+                        <Coffee className="mr-2 h-5 w-5" />
+                        休憩終了
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full"
                         size="lg"
                         onClick={handleClockOut}
-                        disabled={isLoading || isOnBreak}
-                        className="w-full"
+                        disabled={isSubmitting}
                       >
-                        <LogOut className="h-5 w-5 mr-2" />
-                        {isLoading ? "処理中..." : "退勤"}
+                        <LogOut className="mr-2 h-5 w-5" />
+                        退勤
                       </Button>
-                    </>
-                  ) : (
-                    <div className="text-center text-muted-foreground">
-                      本日の勤務は終了しました
-                    </div>
-                  )}
-                </div>
-
-                {attendance && (
-                  <div className="mt-6 pt-6 border-t">
-                    <h3 className="text-lg font-semibold mb-4">休憩履歴</h3>
-                    <div className="space-y-2">
-                      {attendance.breakStart.map(
-                        (start: string, index: number) => (
-                          <div
-                            key={index}
-                            className="flex justify-between items-center text-sm"
-                          >
-                            <span>
-                              {start} - {attendance.breakEnd[index] || "休憩中"}
-                            </span>
-                          </div>
-                        )
-                      )}
-                      {attendance.breakStart.length === 0 && (
-                        <div className="text-center text-muted-foreground">
-                          休憩履歴はありません
-                        </div>
-                      )}
-                    </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center text-muted-foreground">
+                    本日の勤務は終了しました
                   </div>
                 )}
               </div>
