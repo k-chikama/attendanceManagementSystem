@@ -169,8 +169,10 @@ export default function TimeClockPage() {
     });
   };
 
-  const isOnBreak =
-    attendance?.breakStart?.length > (attendance?.breakEnd?.length ?? 0);
+  const isOnBreak = attendance
+    ? (attendance as AttendanceRecord).breakStart.length >
+      ((attendance as AttendanceRecord).breakEnd.length ?? 0)
+    : false;
 
   if (!user) {
     return null;
