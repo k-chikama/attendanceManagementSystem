@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { login, addNewUser } from "@/lib/auth";
+import { loginUser, registerUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
 const emailRegex = /^[\w.!#$%&'*+/=?^_`{|}~-]+@[\w-]+(\.[\w-]+)+$/;
@@ -41,7 +41,7 @@ export default function SignupPage() {
       console.log("サインアップ開始:", { userId, password });
 
       // 新規ユーザーを作成してログイン
-      const user = await login(userId, password);
+      const user = await loginUser(userId, password);
       console.log("ログイン成功:", user);
 
       toast({
