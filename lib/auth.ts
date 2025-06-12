@@ -97,7 +97,7 @@ export function getCurrentUser(): Omit<User, "password"> | null {
   return stored ? JSON.parse(stored) : null;
 }
 
-// ユーザー登録
+// ユーザー登録（従業員用）
 export function registerUser(data: {
   name: string;
   email: string;
@@ -120,6 +120,41 @@ export function registerUser(data: {
     department: data.department,
     position: data.position,
     role: "employee", // デフォルトは一般社員
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  users.push(newUser);
+  saveUsers(users);
+
+  // 登録後は自動的にログイン
+  const { password, ...userWithoutPassword } = newUser;
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+
+  return userWithoutPassword;
+}
+
+// 管理者登録
+export function registerAdmin(data: {
+  name: string;
+  email: string;
+  password: string;
+}): Omit<User, "password"> {
+  const users = getStoredUsers();
+
+  // メールアドレスの重複チェック
+  if (users.some((user) => user.email === data.email)) {
+    throw new Error("このメールアドレスは既に登録されています");
+  }
+
+  const newUser: User = {
+    id: Math.random().toString(36).substr(2, 9),
+    name: data.name,
+    email: data.email,
+    password: hashPassword(data.password),
+    department: "経営企画部", // 管理者のデフォルト部門
+    position: "管理者", // 管理者のデフォルト役職
+    role: "admin",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

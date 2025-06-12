@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { loginUser } from "@/lib/auth";
 import Link from "next/link";
+import { Separator } from "@/components/ui/separator";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,29 +26,27 @@ export default function LoginPage() {
     password: "",
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await loginUser(formData.email, formData.password);
-      toast({
-        title: "ログイン成功",
-        description: "ようこそ戻ってきました！",
-      });
-      router.push("/dashboard");
+      const user = loginUser(formData.email, formData.password);
+      if (user) {
+        toast({
+          title: "ログイン成功",
+          description: "ようこそ戻ってきました！",
+        });
+        router.push("/dashboard");
+      } else {
+        throw new Error("ログインに失敗しました");
+      }
     } catch (error) {
       console.error("ログインエラー:", error);
       toast({
         variant: "destructive",
         title: "エラー",
-        description:
-          error instanceof Error ? error.message : "ログインに失敗しました",
+        description: "メールアドレスまたはパスワードが正しくありません",
       });
     } finally {
       setIsLoading(false);
@@ -57,59 +56,76 @@ export default function LoginPage() {
   return (
     <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-center">
-              ログイン
-            </CardTitle>
-            <CardDescription className="text-center">
-              アカウントにログインしてください
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">メールアドレス</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
+        <div className="flex flex-col space-y-6">
+          <div className="flex flex-col space-y-2 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              アカウントにログイン
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              メールアドレスとパスワードを入力してください
+            </p>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">パスワード</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>ログイン</CardTitle>
+              <CardDescription>
+                アカウント情報を入力してログインしてください
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="email">メールアドレス</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password">パスワード</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "ログイン中..." : "ログイン"}
+                </Button>
+              </form>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "ログイン中..." : "ログイン"}
-              </Button>
-
-              <div className="text-center text-sm">
-                アカウントをお持ちでない方は
-                <Link
-                  href="/register"
-                  className="text-primary hover:underline ml-1"
-                >
-                  新規登録
-                </Link>
+              <div className="mt-6 space-y-4">
+                <Separator />
+                <div className="text-center text-sm text-muted-foreground">
+                  アカウントをお持ちでない方はこちら
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Link href="/admin/register">
+                    <Button variant="outline" className="w-full">
+                      管理者登録
+                    </Button>
+                  </Link>
+                  <Link href="/register">
+                    <Button variant="outline" className="w-full">
+                      従業員登録
+                    </Button>
+                  </Link>
+                </div>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ import {
   Menu,
   User,
   X,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -32,7 +33,12 @@ interface HeaderProps {
   user: SafeUser;
 }
 
-const navigationItems = [
+const navigationItems: {
+  name: string;
+  href: string;
+  icon: any;
+  adminOnly?: boolean;
+}[] = [
   {
     name: "ダッシュボード",
     href: "/dashboard",
@@ -63,7 +69,13 @@ const navigationItems = [
     href: "/shifts",
     icon: Calendar,
   },
-] as const;
+  {
+    name: "シフト管理",
+    href: "/admin/shifts/create",
+    icon: Settings,
+    adminOnly: true,
+  },
+];
 
 export default function Header({ user }: HeaderProps) {
   const pathname = usePathname();
@@ -113,6 +125,9 @@ export default function Header({ user }: HeaderProps) {
             </Link>
             <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2 overflow-x-auto scrollbar-hide min-w-0 flex-1">
               {navigationItems.map((item) => {
+                if (item.adminOnly && user.role !== "admin") {
+                  return null;
+                }
                 const isActive = pathname === item.href;
                 return (
                   <Link
@@ -168,6 +183,9 @@ export default function Header({ user }: HeaderProps) {
                 </SheetHeader>
                 <div className="mt-4 sm:mt-6 flex flex-col space-y-2 sm:space-y-4">
                   {navigationItems.map((item) => {
+                    if (item.adminOnly && user.role !== "admin") {
+                      return null;
+                    }
                     const isActive = pathname === item.href;
                     return (
                       <Link

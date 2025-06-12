@@ -1,8 +1,10 @@
 "use client";
 
-import AppLayout from "@/components/layout/layout";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import React from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   format,
   startOfMonth,
@@ -10,51 +12,45 @@ import {
   eachDayOfInterval,
   addMonths,
   subMonths,
+  isToday,
+  parseISO,
+  getDay,
 } from "date-fns";
 import { ja } from "date-fns/locale";
-import { Button } from "@/components/ui/button";
+import { User, getCurrentUser, getAllUsers } from "@/lib/auth";
+import { Shift, getUserShifts, getShifts } from "@/lib/shifts";
+import AppLayout from "@/components/layout/layout";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-// モック従業員データ
-const employees = [
-  { id: "1", name: "佐藤 公子" },
-  { id: "2", name: "鈴木 太郎" },
-  { id: "3", name: "高橋 三朗" },
-  { id: "4", name: "真鍋 孝美" },
-  { id: "5", name: "里山 悠子" },
-];
-
-// シフトの種類
-const shiftTypes = ["早番", "遅番", "休み", "MTG"] as const;
-type ShiftType = (typeof shiftTypes)[number];
-
-// モックシフトデータ生成関数
-function generateMockShiftData(
-  monthDates: string[]
-): Record<string, Record<string, ShiftType>> {
-  const shiftData: Record<string, Record<string, ShiftType>> = {};
-
-  employees.forEach((emp) => {
-    shiftData[emp.id] = {};
-    monthDates.forEach((date) => {
-      // ランダムにシフトを割り当て
-      const randomIndex = Math.floor(Math.random() * shiftTypes.length);
-      shiftData[emp.id][date] = shiftTypes[randomIndex];
-    });
-  });
-
-  return shiftData;
+// シフト種別を日本語ラベルに変換
+function getShiftTypeLabel(type: string | undefined): string | undefined {
+  switch (type) {
+    case "early":
+      return "早番";
+    case "late":
+      return "遅番";
+    case "dayoff":
+      return "休み";
+    case "al":
+      return "AL";
+    case "overtime":
+      return "残業";
+    default:
+      return undefined;
+  }
 }
 
-function ShiftBadge({ type }: { type: string }) {
-  let color = "bg-gray-200 text-gray-700";
-  if (type === "休み") color = "bg-blue-100 text-blue-700";
-  if (type === "早番") color = "bg-yellow-100 text-yellow-700";
+function ShiftBadge({ type }: { type: string | undefined }) {
+  if (!type) return <span className="text-muted-foreground">-</span>;
+  let color = "bg-gray-100 text-gray-700";
+  if (type === "休み") color = "bg-gray-200 text-gray-500";
+  if (type === "早番") color = "bg-blue-100 text-blue-700";
   if (type === "遅番") color = "bg-purple-100 text-purple-700";
-  if (type === "MTG") color = "bg-orange-100 text-orange-700";
+  if (type === "AL") color = "bg-green-100 text-green-700";
+  if (type === "残業") color = "bg-purple-100 text-purple-700";
   return (
     <span
-      className={`inline-block px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs font-bold ${color}`}
+      className={`inline-block px-2 py-1 rounded text-xs font-medium min-w-[40px] ${color}`}
     >
       {type}
     </span>
@@ -62,23 +58,57 @@ function ShiftBadge({ type }: { type: string }) {
 }
 
 export default function ShiftsPage() {
-  const [currentDate, setCurrentDate] = React.useState(new Date());
+  const router = useRouter();
+  const { toast } = useToast();
+  const [user, setUser] = useState<Omit<User, "password"> | null>(null);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [users, setUsers] = useState<Omit<User, "password">[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const currentUser = getCurrentUser();
+        if (!currentUser) {
+          router.push("/login");
+          return;
+        }
+        setUser(currentUser);
+        setUsers(getAllUsers());
+        setShifts(getShifts());
+      } catch (error) {
+        console.error("データの読み込みに失敗:", error);
+        toast({
+          variant: "destructive",
+          title: "エラー",
+          description: "データの読み込みに失敗しました",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, [router, toast]);
 
   // 月の日付を生成
-  const monthDates = React.useMemo(() => {
+  const monthDates = useState(() => {
     const start = startOfMonth(currentDate);
     const end = endOfMonth(currentDate);
     return eachDayOfInterval({ start, end }).map((date) => ({
-      date: format(date, "M/d", { locale: ja }),
+      date: format(date, "yyyy-MM-dd"),
+      display: format(date, "M/d", { locale: ja }),
       day: format(date, "E", { locale: ja }),
     }));
-  }, [currentDate]);
+  })[0];
 
-  // シフトデータを生成
-  const shiftTable = React.useMemo(
-    () => generateMockShiftData(monthDates.map((d) => `${d.date}(${d.day})`)),
-    [monthDates]
-  );
+  // 日付×ユーザーごとに該当シフトを取得
+  function findShift(userId: string, date: string): Shift | undefined {
+    return shifts.find(
+      (shift) => shift.userId === userId && shift.date === date
+    );
+  }
 
   const handlePrevMonth = () => {
     setCurrentDate(subMonths(currentDate, 1));
@@ -88,81 +118,90 @@ export default function ShiftsPage() {
     setCurrentDate(addMonths(currentDate, 1));
   };
 
+  if (!user) {
+    return null;
+  }
+
   return (
     <AppLayout>
-      <div className="space-y-8">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between mb-4">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handlePrevMonth}
-                className="shrink-0"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <CardTitle className="text-center text-lg sm:text-2xl font-bold tracking-tight">
-                {format(currentDate, "yyyy年M月", { locale: ja })}のシフト表
-              </CardTitle>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleNextMonth}
-                className="shrink-0"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="min-w-full border text-center text-sm">
-                <thead>
-                  <tr>
-                    <th className="border px-2 py-1 sm:px-3 sm:py-2 bg-muted whitespace-nowrap sticky left-0 z-10">
-                      日付
-                    </th>
-                    {employees.map((emp) => (
-                      <th
-                        key={emp.id}
-                        className="border px-2 py-1 sm:px-3 sm:py-2 bg-muted whitespace-nowrap min-w-[100px]"
-                      >
-                        {emp.name}
+      <div className="w-full py-4 px-0">
+        <div className="w-full space-y-4">
+          <Card className="w-full max-w-none">
+            <CardHeader className="w-full">
+              <div className="flex items-center justify-between mb-4 w-full">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handlePrevMonth}
+                  className="shrink-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <CardTitle className="text-center text-lg sm:text-2xl font-bold tracking-tight">
+                  {format(currentDate, "yyyy年M月", { locale: ja })}のシフト表
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleNextMonth}
+                  className="shrink-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto w-full">
+                <table className="min-w-[1800px] w-full border text-center text-xs align-middle">
+                  <thead className="sticky top-0 z-20">
+                    <tr>
+                      <th className="border bg-muted px-1.5 py-1 sticky left-0 z-10 text-left min-w-[100px]">
+                        スタッフ
                       </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {monthDates.map(({ date, day }) => (
-                    <tr key={`${date}(${day})`}>
-                      <td className="border px-2 py-1 sm:px-3 sm:py-2 font-semibold bg-muted/50 whitespace-nowrap sticky left-0 z-10">
-                        <div className="flex flex-col">
-                          <span className="text-sm">{date}</span>
-                          <span className="text-xs text-muted-foreground">
-                            ({day})
-                          </span>
-                        </div>
-                      </td>
-                      {employees.map((emp) => (
-                        <td
-                          key={emp.id}
-                          className="border px-1 py-1 sm:px-2 sm:py-2"
+                      {monthDates.map(({ display, day }, i) => (
+                        <th
+                          key={i}
+                          className="border bg-muted px-1.5 py-1 text-[11px] font-normal min-w-[48px] text-center"
                         >
-                          <ShiftBadge
-                            type={
-                              shiftTable[emp.id]?.[`${date}(${day})`] || "-"
-                            }
-                          />
-                        </td>
+                          <div className="flex flex-col items-center">
+                            <span>{display}</span>
+                            <span className="text-[9px] text-muted-foreground">
+                              ({day})
+                            </span>
+                          </div>
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                  </thead>
+                  <tbody>
+                    {users.map((member) => (
+                      <tr key={member.id}>
+                        <td className="border bg-background sticky left-0 z-10 text-left font-bold px-1.5 py-1 min-w-[100px]">
+                          {member.name}
+                        </td>
+                        {monthDates.map(({ date }, dayIdx) => {
+                          const shift = findShift(member.id, date);
+                          return (
+                            <td
+                              key={dayIdx}
+                              className="border px-1 py-1 align-middle min-w-[48px]"
+                            >
+                              <ShiftBadge
+                                type={getShiftTypeLabel(
+                                  shift ? shift.type : undefined
+                                )}
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </AppLayout>
   );

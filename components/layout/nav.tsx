@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { User, getCurrentUser } from "@/lib/auth";
-import { Calendar, Clock, LogOut, Users, Settings } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  LogOut,
+  Users,
+  Settings,
+  CalendarDays,
+} from "lucide-react";
 
 export function MainNav() {
   const user = getCurrentUser();
@@ -29,9 +36,16 @@ export function MainNav() {
         <Users className="h-4 w-4 mr-2 inline" />
         勤怠記録
       </Link>
+      <Link
+        href="/shifts"
+        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+      >
+        <CalendarDays className="h-4 w-4 mr-2 inline" />
+        シフト確認
+      </Link>
       {isAdmin && (
         <Link
-          href="/admin/shifts"
+          href="/admin/shifts/create"
           className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
         >
           <Settings className="h-4 w-4 mr-2 inline" />

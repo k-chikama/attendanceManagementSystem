@@ -1,11 +1,14 @@
 // Types
+export type ShiftType = "early" | "late" | "dayoff" | "al";
+
 export interface Shift {
   id: string;
   userId: string;
   date: string;
   startTime: string;
   endTime: string;
-  type: "regular" | "overtime";
+  type: ShiftType;
+  status: "pending" | "approved" | "rejected";
   createdAt: string;
   updatedAt: string;
 }
@@ -147,4 +150,34 @@ export function getMonthlyShiftSummary(
     totalRegularHours,
     totalOvertimeHours,
   };
+}
+
+export function getShiftTypeLabel(type: ShiftType): string {
+  switch (type) {
+    case "early":
+      return "早番";
+    case "late":
+      return "遅番";
+    case "dayoff":
+      return "休み";
+    case "al":
+      return "AL";
+    default:
+      return "不明";
+  }
+}
+
+export function getShiftTypeColor(type: ShiftType): string {
+  switch (type) {
+    case "early":
+      return "bg-blue-100 text-blue-800";
+    case "late":
+      return "bg-purple-100 text-purple-800";
+    case "dayoff":
+      return "bg-gray-100 text-gray-800";
+    case "al":
+      return "bg-green-100 text-green-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
 }
