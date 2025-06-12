@@ -131,19 +131,19 @@ export function getMonthlyShiftSummary(
     return endHours - startHours + (endMinutes - startMinutes) / 60;
   };
 
+  // 早番・遅番・ALのみを通常勤務時間として集計
   const totalRegularHours = monthlyShifts
-    .filter((shift) => shift.type === "regular")
+    .filter(
+      (shift) =>
+        shift.type === "early" || shift.type === "late" || shift.type === "al"
+    )
     .reduce(
       (sum, shift) => sum + calculateHours(shift.startTime, shift.endTime),
       0
     );
 
-  const totalOvertimeHours = monthlyShifts
-    .filter((shift) => shift.type === "overtime")
-    .reduce(
-      (sum, shift) => sum + calculateHours(shift.startTime, shift.endTime),
-      0
-    );
+  // 残業は現状未使用なので0で返す
+  const totalOvertimeHours = 0;
 
   return {
     totalShifts: monthlyShifts.length,
