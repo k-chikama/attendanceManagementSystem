@@ -223,3 +223,16 @@ export function changePassword(
 
   saveUsers(users);
 }
+
+// すべてのユーザーを取得
+export function getAllUsers(): Omit<User, "password">[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(USERS_STORAGE_KEY);
+    const users: User[] = stored ? JSON.parse(stored) : [];
+    return users.map(({ password, ...user }) => user);
+  } catch (error) {
+    console.error("Failed to get users:", error);
+    return [];
+  }
+}
