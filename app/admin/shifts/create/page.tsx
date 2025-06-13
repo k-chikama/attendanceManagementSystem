@@ -45,13 +45,11 @@ import {
 import { ja } from "date-fns/locale";
 import { User as UserType, getCurrentUser, getAllUsers } from "@/lib/auth";
 import {
-  Shift,
-  createShift,
-  getShiftsByDate,
-  getShiftTypeLabel,
-  getShiftTypeColor,
+  addShift,
+  getShiftsByUser,
   deleteShift,
-} from "@/lib/shifts";
+  updateShift,
+} from "@/lib/firestoreShifts";
 import AppLayout from "@/components/layout/layout";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
@@ -73,6 +71,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { getUserProfile } from "@/lib/firestoreUsers";
+import { auth } from "@/lib/firebase";
 
 // 時間軸の設定
 const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => {
@@ -134,7 +134,7 @@ function minutesToTime(minutes: number): string {
 }
 
 // シフトの位置と幅を計算する関数
-function calculateShiftPosition(shift: Shift) {
+function calculateShiftPosition(shift: any) {
   if (shift.type === "dayoff" || shift.type === "al") {
     return { left: 0, width: "100%" };
   }
@@ -167,7 +167,7 @@ export default function AdminCreateShiftPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<ShiftType>("early");
-  const [existingShifts, setExistingShifts] = useState<Shift[]>([]);
+  const [existingShifts, setExistingShifts] = useState<any[]>([]);
   const [month, setMonth] = useState<Date>(startOfMonth(selectedDate));
   const daysInMonth = getDaysInMonth(month);
   const daysArray = Array.from({ length: daysInMonth }, (_, i) =>
@@ -193,6 +193,8 @@ export default function AdminCreateShiftPage() {
     dayIdx: number;
   } | null>(null);
 
+  const [role, setRole] = useState<string | null>(null);
+
   // 初期化
   useEffect(() => {
     const obj: { [staffId: string]: (ShiftType | null)[] } = {};
@@ -216,8 +218,9 @@ export default function AdminCreateShiftPage() {
         const allStaff = getAllUsers();
         setStaff(allStaff);
         // 選択された日付のシフトを取得
-        const shifts = getShiftsByDate(format(selectedDate, "yyyy-MM-dd"));
-        setExistingShifts(shifts);
+        getShiftsByUser(format(selectedDate, "yyyy-MM-dd")).then(
+          setExistingShifts
+        );
       } catch (error) {
         console.error("データの読み込みに失敗:", error);
         toast({
@@ -233,6 +236,17 @@ export default function AdminCreateShiftPage() {
     loadData();
   }, [router, toast, selectedDate]);
 
+  useEffect(() => {
+    const fetchRole = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const profile = await getUserProfile(user.uid);
+        setRole(profile?.role || null);
+      }
+    };
+    fetchRole();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -240,7 +254,7 @@ export default function AdminCreateShiftPage() {
     try {
       // 選択されたスタッフ全員にシフトを作成
       for (const staffId of selectedStaff) {
-        const shift: Omit<Shift, "id"> = {
+        const shift: any = {
           userId: staffId,
           date: format(selectedDate, "yyyy-MM-dd"),
           startTime: newShift.startTime,
@@ -251,7 +265,7 @@ export default function AdminCreateShiftPage() {
           updatedAt: new Date().toISOString(),
         };
 
-        await createShift(shift);
+        await addShift(shift);
       }
 
       toast({
@@ -298,8 +312,7 @@ export default function AdminCreateShiftPage() {
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       setSelectedDate(date);
-      const shifts = getShiftsByDate(format(date, "yyyy-MM-dd"));
-      setExistingShifts(shifts);
+      getShiftsByUser(format(date, "yyyy-MM-dd")).then(setExistingShifts);
     }
   };
 
@@ -309,22 +322,64 @@ export default function AdminCreateShiftPage() {
   };
 
   // シフト種別選択
-  const handleSelectShiftType = (shiftType: ShiftType | null) => {
+  const handleSelectShiftType = async (shiftType: ShiftType | null) => {
     if (!popover) return;
     const { staffId, dayIdx } = popover;
     if (!cellShiftsRef.current[staffId]) return;
     cellShiftsRef.current[staffId][dayIdx] = shiftType;
     setPopover(null);
     forceUpdate();
+
+    // Firestore上の既存シフトを検索
+    const dateStr = format(addDays(month, dayIdx), "yyyy-MM-dd");
+    const shift = existingShifts.find(
+      (s) => s.userId === staffId && s.date === dateStr
+    );
+    const shiftTypeDef = shiftTypes.find((t) => t.id === shiftType);
+    if (shiftType && shiftTypeDef) {
+      if (shift) {
+        // 既存シフトがあれば編集
+        await updateShift(shift.id, {
+          type: shiftTypeDef.id,
+          startTime: shiftTypeDef.defaultStartTime,
+          endTime: shiftTypeDef.defaultEndTime,
+          updatedAt: new Date().toISOString(),
+        });
+        toast({ title: "シフトを更新しました" });
+      } else {
+        // なければ新規作成
+        await addShift({
+          userId: staffId,
+          date: dateStr,
+          startTime: shiftTypeDef.defaultStartTime,
+          endTime: shiftTypeDef.defaultEndTime,
+          type: shiftTypeDef.id,
+          status: "approved",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        toast({ title: "シフトを登録しました" });
+      }
+      // 再取得
+      getShiftsByUser(format(selectedDate, "yyyy-MM-dd")).then(
+        setExistingShifts
+      );
+    }
+    if (!shiftType && shift) {
+      // クリア時は削除
+      await deleteShift(shift.id);
+      getShiftsByUser(format(selectedDate, "yyyy-MM-dd")).then(
+        setExistingShifts
+      );
+      toast({ title: "シフトを削除しました" });
+    }
   };
 
-  // シフト登録処理
+  // Firestoreでシフト登録
   const handleSaveShifts = async () => {
     setIsSubmitting(true);
-    const shiftsToSave: Omit<Shift, "id">[] = [];
+    const shiftsToSave: any[] = [];
     const currentMonth = month;
-
-    // スタッフごとに、セルごとのシフト種別を集計
     for (const staffId of staff.map((s) => s.id)) {
       const cellShifts = cellShiftsRef.current[staffId] || [];
       cellShifts.forEach((shiftType, dayIdx) => {
@@ -346,19 +401,10 @@ export default function AdminCreateShiftPage() {
         }
       });
     }
-
     try {
-      // 既存のシフトを削除（※実際の実装では、重複チェックや差分更新なども検討してください）
-      const existingShifts = getShiftsByDate(format(currentMonth, "yyyy-MM"));
-      for (const shift of existingShifts) {
-        deleteShift(shift.id);
-      }
-
-      // 新たにシフトを登録
       for (const shift of shiftsToSave) {
-        await createShift(shift);
+        await addShift(shift);
       }
-
       toast({
         title: "シフトを登録しました",
         description: shiftsToSave.length + "件のシフトを登録しました。",
@@ -375,8 +421,16 @@ export default function AdminCreateShiftPage() {
     }
   };
 
-  if (!user) {
+  if (!user || role === null) {
     return null;
+  }
+
+  if (role !== "admin") {
+    return (
+      <div className="text-center text-red-500 py-10">
+        管理者権限がありません
+      </div>
+    );
   }
 
   return (
@@ -469,6 +523,12 @@ export default function AdminCreateShiftPage() {
                         const isOpen: boolean =
                           popover?.staffId === member.id &&
                           popover?.dayIdx === dayIdx;
+                        // Firestore上の既存シフトを検索
+                        const shift = existingShifts.find(
+                          (s) =>
+                            s.userId === member.id &&
+                            s.date === format(date, "yyyy-MM-dd")
+                        );
                         return (
                           <td
                             key={dayIdx}
@@ -477,81 +537,110 @@ export default function AdminCreateShiftPage() {
                               isOpen ? "ring-2 ring-primary/60 z-20" : ""
                             )}
                           >
-                            <Popover
-                              open={isOpen}
-                              onOpenChange={(open) => !open && setPopover(null)}
-                            >
-                              <PopoverTrigger asChild>
-                                <span
-                                  className="block w-full h-full flex items-center justify-center"
-                                  onClick={() =>
-                                    handleCellClick(member.id, dayIdx)
-                                  }
-                                >
-                                  {cellShiftsRef.current[member.id] &&
-                                  cellShiftsRef.current[member.id][dayIdx] ? (
-                                    <span
-                                      className={cn(
-                                        "inline-block w-8 h-8 rounded font-bold text-xs flex items-center justify-center mx-auto",
-                                        shiftTypes.find(
-                                          (t) =>
-                                            t.id ===
-                                            cellShiftsRef.current[member.id][
-                                              dayIdx
-                                            ]
-                                        )?.color
-                                      )}
-                                    >
-                                      {
-                                        shiftTypes.find(
-                                          (t) =>
-                                            t.id ===
-                                            cellShiftsRef.current[member.id][
-                                              dayIdx
-                                            ]
-                                        )?.name
-                                      }
-                                    </span>
-                                  ) : (
-                                    <span className="inline-block w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                                      -
-                                    </span>
-                                  )}
-                                </span>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                align="center"
-                                className="p-2 w-40"
+                            <div className="flex flex-col items-center justify-center h-full">
+                              <Popover
+                                open={isOpen}
+                                onOpenChange={(open) =>
+                                  !open && setPopover(null)
+                                }
                               >
-                                <div className="grid grid-cols-2 gap 2">
-                                  {shiftTypes.map((type) => (
-                                    <button
-                                      key={type.id}
-                                      type="button"
-                                      className={cn(
-                                        "px-2 py-2 rounded font-bold text-xs flex items-center justify-center w-full",
-                                        type.color,
-                                        "hover:opacity-80 transition-opacity"
-                                      )}
-                                      onClick={() =>
-                                        handleSelectShiftType(type.id)
-                                      }
-                                    >
-                                      {type.name}
-                                    </button>
-                                  ))}
-                                  <button
-                                    type="button"
-                                    className="px-2 py-2 rounded text-xs w-full border text-muted-foreground hover:bg-muted"
+                                <PopoverTrigger asChild>
+                                  <span
+                                    className="block w-full h-full flex items-center justify-center"
                                     onClick={() =>
-                                      handleSelectShiftType(null as any)
+                                      handleCellClick(member.id, dayIdx)
                                     }
                                   >
-                                    クリア
-                                  </button>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
+                                    {cellShiftsRef.current[member.id] &&
+                                    cellShiftsRef.current[member.id][dayIdx] ? (
+                                      <span
+                                        className={cn(
+                                          "inline-block w-8 h-8 rounded font-bold text-xs flex items-center justify-center mx-auto",
+                                          shiftTypes.find(
+                                            (t) =>
+                                              t.id ===
+                                              cellShiftsRef.current[member.id][
+                                                dayIdx
+                                              ]
+                                          )?.color
+                                        )}
+                                      >
+                                        {
+                                          shiftTypes.find(
+                                            (t) =>
+                                              t.id ===
+                                              cellShiftsRef.current[member.id][
+                                                dayIdx
+                                              ]
+                                          )?.name
+                                        }
+                                      </span>
+                                    ) : (
+                                      <span className="inline-block w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                                        -
+                                      </span>
+                                    )}
+                                  </span>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  align="center"
+                                  className="p-2 w-40"
+                                >
+                                  <div className="grid grid-cols-2 gap 2">
+                                    {shiftTypes.map((type) => (
+                                      <button
+                                        key={type.id}
+                                        type="button"
+                                        className={cn(
+                                          "px-2 py-2 rounded font-bold text-xs flex items-center justify-center w-full",
+                                          type.color,
+                                          "hover:opacity-80 transition-opacity"
+                                        )}
+                                        onClick={() =>
+                                          handleSelectShiftType(type.id)
+                                        }
+                                      >
+                                        {type.name}
+                                      </button>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      className="px-2 py-2 rounded text-xs w-full border text-muted-foreground hover:bg-muted"
+                                      onClick={() =>
+                                        handleSelectShiftType(null as any)
+                                      }
+                                    >
+                                      クリア
+                                    </button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                              {/* Firestore上に既存シフトがある場合のみ削除ボタンを表示 */}
+                              {shift && (
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="mt-1 w-6 h-6"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (
+                                      window.confirm(
+                                        "このシフトを削除しますか？"
+                                      )
+                                    ) {
+                                      await deleteShift(shift.id);
+                                      // 再取得
+                                      getShiftsByUser(
+                                        format(selectedDate, "yyyy-MM-dd")
+                                      ).then(setExistingShifts);
+                                      toast({ title: "シフトを削除しました" });
+                                    }
+                                  }}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
                           </td>
                         );
                       })}

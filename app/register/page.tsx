@@ -20,8 +20,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { registerUser } from "@/lib/auth";
+import { signUp } from "@/lib/firebaseAuth";
 import Link from "next/link";
+import { saveUserProfile } from "@/lib/firestoreUsers";
 
 const departments = ["開発部", "人事部", "経営企画部", "営業部", "新規"];
 const positions = [
@@ -72,12 +73,16 @@ export default function RegisterPage() {
       }
 
       // ユーザー登録
-      await registerUser({
+      const user = await signUp(formData.email, formData.password);
+
+      // Firestoreにユーザー情報を保存
+      await saveUserProfile({
+        uid: user.uid,
         name: formData.name,
         email: formData.email,
-        password: formData.password,
         department: formData.department,
         position: formData.position,
+        role: "employee",
       });
 
       toast({

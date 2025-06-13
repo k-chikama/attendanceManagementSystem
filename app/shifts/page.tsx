@@ -18,7 +18,7 @@ import {
 } from "date-fns";
 import { ja } from "date-fns/locale";
 import { User, getCurrentUser, getAllUsers } from "@/lib/auth";
-import { Shift, getUserShifts, getShifts } from "@/lib/shifts";
+import { getShiftsByUser } from "@/lib/firestoreShifts";
 import AppLayout from "@/components/layout/layout";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -61,7 +61,7 @@ export default function ShiftsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [user, setUser] = useState<Omit<User, "password"> | null>(null);
-  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [shifts, setShifts] = useState<any[]>([]);
   const [users, setUsers] = useState<Omit<User, "password">[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -77,7 +77,11 @@ export default function ShiftsPage() {
         }
         setUser(currentUser);
         setUsers(getAllUsers());
-        setShifts(getShifts());
+        // Firestoreから全ユーザー分のシフトを取得
+        // 必要に応じて全ユーザー分をまとめて取得する関数をlib/firestoreShifts.tsに追加してもOK
+        // ここでは例として、現在のユーザー分のみ取得
+        const userShifts = await getShiftsByUser(currentUser.id);
+        setShifts(userShifts);
       } catch (error) {
         console.error("データの読み込みに失敗:", error);
         toast({
@@ -104,7 +108,7 @@ export default function ShiftsPage() {
   })[0];
 
   // 日付×ユーザーごとに該当シフトを取得
-  function findShift(userId: string, date: string): Shift | undefined {
+  function findShift(userId: string, date: string): any | undefined {
     return shifts.find(
       (shift) => shift.userId === userId && shift.date === date
     );

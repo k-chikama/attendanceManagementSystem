@@ -13,9 +13,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { registerAdmin } from "@/lib/auth";
+import { signUp } from "@/lib/firebaseAuth";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { saveUserProfile } from "@/lib/firestoreUsers";
 
 export default function AdminRegisterPage() {
   const router = useRouter();
@@ -43,30 +44,27 @@ export default function AdminRegisterPage() {
     }
 
     try {
-      const user = registerAdmin({
+      const user = await signUp(formData.email, formData.password);
+      // Firestoreに管理者情報を保存
+      await saveUserProfile({
+        uid: user.uid,
         name: formData.name,
         email: formData.email,
-        password: formData.password,
+        department: "経営企画部", // 管理者のデフォルト部門
+        position: "管理者", // 管理者のデフォルト役職
+        role: "admin",
       });
-
-      if (user) {
-        toast({
-          title: "登録成功",
-          description: "管理者アカウントが作成されました",
-        });
-        router.push("/login");
-      } else {
-        throw new Error("登録に失敗しました");
-      }
-    } catch (error) {
+      toast({
+        title: "登録成功",
+        description: "管理者アカウントが作成されました",
+      });
+      router.push("/login");
+    } catch (error: any) {
       console.error("登録エラー:", error);
       toast({
         variant: "destructive",
         title: "エラー",
-        description:
-          error instanceof Error
-            ? error.message
-            : "アカウントの登録に失敗しました",
+        description: error?.message || "アカウントの登録に失敗しました",
       });
     } finally {
       setIsLoading(false);

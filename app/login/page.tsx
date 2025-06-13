@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { loginUser } from "@/lib/auth";
+import { signIn } from "@/lib/firebaseAuth";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 
@@ -31,22 +31,19 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const user = loginUser(formData.email, formData.password);
-      if (user) {
-        toast({
-          title: "ログイン成功",
-          description: "ようこそ戻ってきました！",
-        });
-        router.push("/dashboard");
-      } else {
-        throw new Error("ログインに失敗しました");
-      }
-    } catch (error) {
+      const user = await signIn(formData.email, formData.password);
+      toast({
+        title: "ログイン成功",
+        description: "ようこそ戻ってきました！",
+      });
+      router.push("/dashboard");
+    } catch (error: any) {
       console.error("ログインエラー:", error);
       toast({
         variant: "destructive",
         title: "エラー",
-        description: "メールアドレスまたはパスワードが正しくありません",
+        description:
+          error?.message || "メールアドレスまたはパスワードが正しくありません",
       });
     } finally {
       setIsLoading(false);
