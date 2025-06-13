@@ -14,6 +14,7 @@ import {
   Legend,
 } from "recharts";
 import { Calendar, Clock, UserCheck, FileText } from "lucide-react";
+import { onAuthStateChanged } from "firebase/auth";
 
 import {
   Card,
@@ -111,33 +112,40 @@ export default function Dashboard() {
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-
-      // Get user's attendance records
-      const attendance = getUserAttendance(currentUser.id);
-      setAttendanceData(attendance);
-
-      // Get user's leave requests
-      const leaves = getUserLeaveRequests(currentUser.id);
-      setLeaveRequests(leaves);
-
-      // Get today's attendance
-      const today = getTodayAttendance(currentUser.id);
-      if (today) {
-        setTodayRecord(today);
-      }
-    }
-
-    const fetchRole = async () => {
-      const user = auth.currentUser;
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const profile = await getUserProfile(user.uid);
-        setRole(profile?.role || null);
+        if (profile) {
+          setUser({
+            id: user.uid,
+            name: profile.name || "",
+            email: user.email || "",
+            role: profile.role || "employee",
+            department: profile.department || "",
+            position: profile.position || "",
+            createdAt: profile.createdAt || "",
+            updatedAt: profile.updatedAt || "",
+          });
+          setRole(profile.role || null);
+        } else {
+          setUser(null);
+          setRole(null);
+        }
+        // 勤怠データ等も取得
+        const attendance = getUserAttendance(user.uid);
+        setAttendanceData(attendance);
+        const leaves = getUserLeaveRequests(user.uid);
+        setLeaveRequests(leaves);
+        const today = getTodayAttendance(user.uid);
+        if (today) {
+          setTodayRecord(today);
+        }
+      } else {
+        setRole("none");
+        setUser(null);
       }
-    };
-    fetchRole();
+    });
+    return unsubscribe;
   }, []);
 
   if (role === null) {
