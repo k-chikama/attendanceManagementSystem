@@ -32,6 +32,8 @@ import {
 } from "@/lib/attendance";
 import { User, getCurrentUser } from "@/lib/auth";
 import AppLayout from "@/components/layout/layout";
+import { getUserProfile } from "@/lib/firestoreUsers";
+import { auth } from "@/lib/firebase";
 
 // Generate recent attendance data for the last 7 days
 const generateWeeklyData = (records: AttendanceRecord[]) => {
@@ -106,6 +108,7 @@ export default function Dashboard() {
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -126,7 +129,23 @@ export default function Dashboard() {
         setTodayRecord(today);
       }
     }
+
+    const fetchRole = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const profile = await getUserProfile(user.uid);
+        setRole(profile?.role || null);
+      }
+    };
+    fetchRole();
   }, []);
+
+  if (role === null) {
+    return <div>Loading...</div>;
+  }
+  if (role !== "admin") {
+    return <div>権限がありません</div>;
+  }
 
   if (!user) {
     return null;
