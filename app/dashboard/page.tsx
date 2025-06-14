@@ -115,18 +115,24 @@ export default function Dashboard() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const profile = await getUserProfile(user.uid);
+        const toRole = (role: string): "employee" | "manager" | "admin" => {
+          if (role === "employee" || role === "manager" || role === "admin") {
+            return role;
+          }
+          return "employee";
+        };
         if (profile) {
           setUser({
             id: user.uid,
             name: profile.name || "",
             email: user.email || "",
-            role: profile.role || "employee",
+            role: toRole(profile.role),
             department: profile.department || "",
             position: profile.position || "",
             createdAt: profile.createdAt || "",
             updatedAt: profile.updatedAt || "",
           });
-          setRole(profile.role || null);
+          setRole(toRole(profile.role));
         } else {
           setUser(null);
           setRole(null);

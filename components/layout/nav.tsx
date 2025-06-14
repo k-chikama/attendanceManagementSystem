@@ -32,12 +32,18 @@ export function MainNav() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const profile = await getUserProfile(firebaseUser.uid);
+        const toRole = (role: string): "employee" | "manager" | "admin" => {
+          if (role === "employee" || role === "manager" || role === "admin") {
+            return role;
+          }
+          return "employee";
+        };
         if (profile) {
           setUser({
             id: firebaseUser.uid,
             name: profile.name || "",
             email: firebaseUser.email || "",
-            role: profile.role || "employee",
+            role: toRole(profile.role),
             department: profile.department || "",
             position: profile.position || "",
             createdAt: profile.createdAt || "",
