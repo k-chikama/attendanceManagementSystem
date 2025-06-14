@@ -74,6 +74,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { getUserProfile } from "@/lib/firestoreUsers";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { useUser } from "@/contexts/UserContext";
 
 // 時間軸の設定
 const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => {
@@ -179,8 +180,8 @@ const toRole = (role: string): "employee" | "manager" | "admin" => {
 export default function AdminCreateShiftPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [user, setUser] = useState<SafeUser | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const user = useUser();
+  const role = user?.role ?? null;
   const [staff, setStaff] = useState<SafeUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -212,32 +213,6 @@ export default function AdminCreateShiftPage() {
     staffId: string;
     dayIdx: number;
   } | null>(null);
-
-  // Firebase Authからuser情報を取得
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const profile = await getUserProfile(firebaseUser.uid);
-        if (profile) {
-          setUser({
-            id: profile.uid,
-            name: profile.name || "",
-            email: profile.email || "",
-            role: toRole(profile.role),
-            department: profile.department || "",
-            position: profile.position || "",
-            createdAt: profile.createdAt || "",
-            updatedAt: profile.updatedAt || "",
-          });
-          setRole(toRole(profile.role));
-        }
-      } else {
-        setUser(null);
-        setRole(null);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
 
   // 初期化
   useEffect(() => {

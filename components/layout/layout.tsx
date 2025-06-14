@@ -9,6 +9,7 @@ import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { getUserProfile } from "@/lib/firestoreUsers";
 import { MainNav } from "@/components/layout/nav";
+import { UserContext } from "@/contexts/UserContext";
 
 type SafeUser = Omit<User, "password">;
 
@@ -109,23 +110,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {user && <Header user={user} />}
-      {user && <MainNav user={user} />}
-      <main className="flex-1 w-full">
-        <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          {children}
-        </div>
-      </main>
-      <footer className="border-t py-4 bg-background">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center items-center">
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} 勤怠管理システム
-            </p>
+    <UserContext.Provider value={user}>
+      <div className="min-h-screen flex flex-col bg-background">
+        {user && <Header user={user} />}
+        {user && <MainNav user={user} />}
+        <main className="flex-1 w-full">
+          <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            {children}
           </div>
-        </div>
-      </footer>
-    </div>
+        </main>
+        <footer className="border-t py-4 bg-background">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-center items-center">
+              <p className="text-sm text-muted-foreground">
+                © {new Date().getFullYear()} 勤怠管理システム
+              </p>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </UserContext.Provider>
   );
 }
