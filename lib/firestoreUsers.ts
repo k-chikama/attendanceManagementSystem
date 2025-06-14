@@ -1,6 +1,17 @@
 import { db } from "./firebase";
 import { doc, setDoc, getDoc, getDocs, collection } from "firebase/firestore";
 
+export type UserProfile = {
+  uid: string;
+  name: string;
+  email: string;
+  department: string;
+  position: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 // ユーザー情報を保存
 export const saveUserProfile = async (user: {
   uid: string;
@@ -19,10 +30,14 @@ export const saveUserProfile = async (user: {
 };
 
 // ユーザー情報を取得
-export const getUserProfile = async (uid: string) => {
+export const getUserProfile = async (
+  uid: string
+): Promise<UserProfile | null> => {
   const docRef = doc(db, "users", uid);
   const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? { uid: docSnap.id, ...docSnap.data() } : null;
+  return docSnap.exists()
+    ? ({ uid: docSnap.id, ...docSnap.data() } as UserProfile)
+    : null;
 };
 
 // 全ユーザー一覧を取得
