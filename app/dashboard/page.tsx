@@ -151,10 +151,6 @@ export default function Dashboard() {
   if (role === null) {
     return <div>Loading...</div>;
   }
-  if (role !== "admin") {
-    return <div>権限がありません</div>;
-  }
-
   if (!user) {
     return null;
   }
