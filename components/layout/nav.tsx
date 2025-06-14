@@ -1,10 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { getUserProfile } from "@/lib/firestoreUsers";
 import {
   Calendar,
   Clock,
@@ -25,44 +21,8 @@ type SafeUser = {
   updatedAt: string;
 };
 
-export function MainNav() {
-  const [user, setUser] = useState<SafeUser | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const profile = await getUserProfile(firebaseUser.uid);
-        const toRole = (role: string): "employee" | "manager" | "admin" => {
-          if (role === "employee" || role === "manager" || role === "admin") {
-            return role;
-          }
-          return "employee";
-        };
-        if (profile) {
-          setUser({
-            id: firebaseUser.uid,
-            name: profile.name || "",
-            email: firebaseUser.email || "",
-            role: toRole(profile.role),
-            department: profile.department || "",
-            position: profile.position || "",
-            createdAt: profile.createdAt || "",
-            updatedAt: profile.updatedAt || "",
-          });
-        }
-      } else {
-        setUser(null);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
+export function MainNav({ user }: { user: SafeUser }) {
   const isAdmin = user?.role === "admin";
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <nav className="flex items-center space-x-4 lg:space-x-6">

@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { getUserProfile } from "@/lib/firestoreUsers";
+import { MainNav } from "@/components/layout/nav";
 
 type SafeUser = Omit<User, "password">;
 
@@ -110,6 +111,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {user && <Header user={user} />}
+      {user && <MainNav user={user} />}
       <main className="flex-1 w-full">
         <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
           {children}

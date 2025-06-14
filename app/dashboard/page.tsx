@@ -104,8 +104,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function Dashboard() {
-  const [user, setUser] = useState<Omit<User, "password"> | null>(null);
+export default function Dashboard({
+  user,
+}: {
+  user: Omit<User, "password"> | null;
+}) {
+  // userがなければ何も表示しない
+  if (!user) return null;
+
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
@@ -156,9 +162,6 @@ export default function Dashboard() {
 
   if (role === null) {
     return <div>Loading...</div>;
-  }
-  if (!user) {
-    return null;
   }
 
   const weeklyData = generateWeeklyData(attendanceData);
