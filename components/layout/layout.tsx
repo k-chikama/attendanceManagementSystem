@@ -39,11 +39,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             retry++;
           }
           if (profile) {
+            const validRoles = ["employee", "manager", "admin"] as const;
+            type Role = (typeof validRoles)[number];
+
             setUser({
               id: profile.uid,
               name: profile.name || "",
               email: profile.email || "",
-              role: profile.role || "employee",
+              role: validRoles.includes(profile.role)
+                ? (profile.role as Role)
+                : "employee",
               department: profile.department || "",
               position: profile.position || "",
               createdAt: profile.createdAt || "",
