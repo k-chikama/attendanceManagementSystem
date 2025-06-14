@@ -155,6 +155,7 @@ export default function RegisterPage() {
                   required
                   disabled={isLoading}
                   minLength={8}
+                  autoComplete="new-password"
                 />
                 <p className="text-sm text-muted-foreground">
                   8文字以上で入力してください
@@ -172,6 +173,7 @@ export default function RegisterPage() {
                   required
                   disabled={isLoading}
                   minLength={8}
+                  autoComplete="new-password"
                 />
               </div>
 

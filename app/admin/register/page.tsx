@@ -134,6 +134,7 @@ export default function AdminRegisterPage() {
                       setFormData({ ...formData, password: e.target.value })
                     }
                     required
+                    autoComplete="new-password"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -149,6 +150,7 @@ export default function AdminRegisterPage() {
                       })
                     }
                     required
+                    autoComplete="new-password"
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>

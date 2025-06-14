@@ -95,6 +95,7 @@ export default function LoginPage() {
                       setFormData({ ...formData, password: e.target.value })
                     }
                     required
+                    autoComplete="current-password"
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
