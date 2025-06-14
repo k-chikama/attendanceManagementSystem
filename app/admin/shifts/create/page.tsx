@@ -73,6 +73,7 @@ import {
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { getUserProfile } from "@/lib/firestoreUsers";
 import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 // 時間軸の設定
 const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => {
@@ -168,11 +169,14 @@ type SafeUser = {
   updatedAt: string;
 };
 
-export default function AdminCreateShiftPage({ user }: { user: SafeUser }) {
+export default function AdminCreateShiftPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [user, setUser] = useState<SafeUser | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [staff, setStaff] = useState<SafeUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<ShiftType>("early");
@@ -202,7 +206,31 @@ export default function AdminCreateShiftPage({ user }: { user: SafeUser }) {
     dayIdx: number;
   } | null>(null);
 
-  const [role, setRole] = useState<string | null>(user.role);
+  // Firebase Authからuser情報を取得
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const profile = await getUserProfile(firebaseUser.uid);
+        if (profile) {
+          setUser({
+            id: profile.uid,
+            name: profile.name || "",
+            email: profile.email || "",
+            role: profile.role || "employee",
+            department: profile.department || "",
+            position: profile.position || "",
+            createdAt: profile.createdAt || "",
+            updatedAt: profile.updatedAt || "",
+          });
+          setRole(profile.role || "employee");
+        }
+      } else {
+        setUser(null);
+        setRole(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // 初期化
   useEffect(() => {
@@ -222,8 +250,18 @@ export default function AdminCreateShiftPage({ user }: { user: SafeUser }) {
           router.push("/login");
           return;
         }
-        // Firestoreから全スタッフ取得
-        const allStaff = await getAllUsersFirestore();
+        // Firestoreから全スタッフ取得しSafeUser[]に変換
+        const allStaffRaw = await getAllUsersFirestore();
+        const allStaff: SafeUser[] = allStaffRaw.map((u: any) => ({
+          id: u.uid,
+          name: u.name || "",
+          email: u.email || "",
+          role: u.role || "employee",
+          department: u.department || "",
+          position: u.position || "",
+          createdAt: u.createdAt || "",
+          updatedAt: u.updatedAt || "",
+        }));
         setStaff(allStaff);
         // 選択された日付のシフトを取得
         getShiftsByUser(format(selectedDate, "yyyy-MM-dd")).then(
