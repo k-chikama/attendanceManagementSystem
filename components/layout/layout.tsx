@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Header from "./header";
 import { User, getCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { getUserProfile } from "@/lib/firestoreUsers";
 
 type SafeUser = Omit<User, "password">;
 
@@ -15,11 +18,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
-        const currentUser = getCurrentUser();
-
-        if (!currentUser) {
+        if (!firebaseUser) {
           if (typeof window !== "undefined") {
             toast({
               title: "セッション切れ",
@@ -27,8 +28,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             });
             router.push("/login");
           }
+          setUser(null);
         } else {
-          setUser(currentUser);
+          const profile = await getUserProfile(firebaseUser.uid);
+          if (profile) {
+            setUser({
+              id: firebaseUser.uid,
+              name: profile.name || "",
+              email: firebaseUser.email || "",
+              role: profile.role || "employee",
+              department: profile.department || "",
+              position: profile.position || "",
+              createdAt: profile.createdAt || "",
+              updatedAt: profile.updatedAt || "",
+            });
+          } else {
+            setUser(null);
+          }
         }
       } catch (error) {
         console.error("[AppLayout] 認証チェックエラー:", error);
@@ -40,9 +56,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       } finally {
         setLoading(false);
       }
-    };
+    });
 
-    checkAuth();
+    return () => unsubscribe();
   }, [router, toast]);
 
   if (loading) {

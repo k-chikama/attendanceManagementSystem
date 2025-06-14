@@ -1,3 +1,8 @@
+/**
+ * @deprecated このファイルは非推奨です。Firebase Authに移行しました。
+ * 新しい認証処理は lib/firebaseAuth.ts と lib/firestoreUsers.ts を使用してください。
+ */
+
 // Simulated authentication functions
 // In a real application, you would implement proper authentication
 // with a backend service or auth provider
