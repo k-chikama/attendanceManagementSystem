@@ -43,7 +43,7 @@ import {
   addMonths,
 } from "date-fns";
 import { ja } from "date-fns/locale";
-import { User as UserType, getCurrentUser, getAllUsers } from "@/lib/auth";
+import { getAllUsers as getAllUsersFirestore } from "@/lib/firestoreUsers";
 import {
   addShift,
   getShiftsByUser,
@@ -157,13 +157,22 @@ type NewShift = {
   type: ShiftTypeForDB;
 };
 
-export default function AdminCreateShiftPage() {
+type SafeUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "employee" | "manager" | "admin";
+  department: string;
+  position: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export default function AdminCreateShiftPage({ user }: { user: SafeUser }) {
   const router = useRouter();
   const { toast } = useToast();
-  const [user, setUser] = useState<Omit<UserType, "password"> | null>(null);
-  const [staff, setStaff] = useState<Omit<UserType, "password">[]>([]);
+  const [staff, setStaff] = useState<SafeUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<ShiftType>("early");
@@ -193,7 +202,7 @@ export default function AdminCreateShiftPage() {
     dayIdx: number;
   } | null>(null);
 
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(user.role);
 
   // 初期化
   useEffect(() => {
@@ -209,13 +218,12 @@ export default function AdminCreateShiftPage() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const currentUser = getCurrentUser();
-        if (!currentUser || currentUser.role !== "admin") {
+        if (!user || user.role !== "admin") {
           router.push("/login");
           return;
         }
-        setUser(currentUser);
-        const allStaff = getAllUsers();
+        // Firestoreから全スタッフ取得
+        const allStaff = await getAllUsersFirestore();
         setStaff(allStaff);
         // 選択された日付のシフトを取得
         getShiftsByUser(format(selectedDate, "yyyy-MM-dd")).then(
@@ -232,20 +240,8 @@ export default function AdminCreateShiftPage() {
         setIsLoading(false);
       }
     };
-
     loadData();
-  }, [router, toast, selectedDate]);
-
-  useEffect(() => {
-    const fetchRole = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        const profile = await getUserProfile(user.uid);
-        setRole(profile?.role || null);
-      }
-    };
-    fetchRole();
-  }, []);
+  }, [router, toast, selectedDate, user, daysInMonth, month]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
