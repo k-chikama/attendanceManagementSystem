@@ -40,9 +40,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }
           if (profile) {
             setUser({
-              id: firebaseUser.uid,
+              id: profile.uid,
               name: profile.name || "",
-              email: firebaseUser.email || "",
+              email: profile.email || "",
               role: profile.role || "employee",
               department: profile.department || "",
               position: profile.position || "",

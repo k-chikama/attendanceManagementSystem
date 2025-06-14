@@ -10,14 +10,19 @@ export const saveUserProfile = async (user: {
   position: string;
   role: string;
 }) => {
-  await setDoc(doc(db, "users", user.uid), user);
+  const now = new Date().toISOString();
+  await setDoc(doc(db, "users", user.uid), {
+    ...user,
+    createdAt: now,
+    updatedAt: now,
+  });
 };
 
 // ユーザー情報を取得
 export const getUserProfile = async (uid: string) => {
   const docRef = doc(db, "users", uid);
   const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? docSnap.data() : null;
+  return docSnap.exists() ? { uid: docSnap.id, ...docSnap.data() } : null;
 };
 
 // 全ユーザー一覧を取得
