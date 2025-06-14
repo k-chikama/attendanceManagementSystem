@@ -19,6 +19,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
       try {
         if (!firebaseUser) {
           if (typeof window !== "undefined") {
@@ -30,7 +31,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }
           setUser(null);
         } else {
-          const profile = await getUserProfile(firebaseUser.uid);
+          let profile = await getUserProfile(firebaseUser.uid);
+          let retry = 0;
+          while (!profile && retry < 3) {
+            await new Promise((res) => setTimeout(res, 500));
+            profile = await getUserProfile(firebaseUser.uid);
+            retry++;
+          }
           if (profile) {
             setUser({
               id: firebaseUser.uid,
@@ -43,6 +50,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               updatedAt: profile.updatedAt || "",
             });
           } else {
+            toast({
+              variant: "destructive",
+              title: "ユーザー情報取得エラー",
+              description: "再度ログインしてください。",
+            });
+            await auth.signOut();
+            router.push("/login");
             setUser(null);
           }
         }
