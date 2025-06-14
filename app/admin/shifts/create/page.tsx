@@ -169,6 +169,13 @@ type SafeUser = {
   updatedAt: string;
 };
 
+const toRole = (role: string): "employee" | "manager" | "admin" => {
+  if (role === "employee" || role === "manager" || role === "admin") {
+    return role;
+  }
+  return "employee";
+};
+
 export default function AdminCreateShiftPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -216,13 +223,13 @@ export default function AdminCreateShiftPage() {
             id: profile.uid,
             name: profile.name || "",
             email: profile.email || "",
-            role: profile.role || "employee",
+            role: toRole(profile.role),
             department: profile.department || "",
             position: profile.position || "",
             createdAt: profile.createdAt || "",
             updatedAt: profile.updatedAt || "",
           });
-          setRole(profile.role || "employee");
+          setRole(toRole(profile.role));
         }
       } else {
         setUser(null);
@@ -256,7 +263,7 @@ export default function AdminCreateShiftPage() {
           id: u.uid,
           name: u.name || "",
           email: u.email || "",
-          role: u.role || "employee",
+          role: toRole(u.role),
           department: u.department || "",
           position: u.position || "",
           createdAt: u.createdAt || "",
