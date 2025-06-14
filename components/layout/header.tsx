@@ -16,7 +16,6 @@ import {
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { User as UserType, logoutUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -26,8 +25,19 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
-type SafeUser = Omit<UserType, "password">;
+type SafeUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "employee" | "manager" | "admin";
+  department: string;
+  position: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 interface HeaderProps {
   user: SafeUser;
@@ -87,7 +97,7 @@ export default function Header({ user }: HeaderProps) {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-      logoutUser();
+      await signOut(auth);
       toast({
         title: "ログアウトしました",
         description: "ログインページにリダイレクトします。",
