@@ -1,3 +1,4 @@
+"use client";
 import { useUser } from "@/contexts/UserContext";
 import AppLayout from "@/components/layout/layout";
 import { useState, useEffect } from "react";
