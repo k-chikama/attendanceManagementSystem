@@ -291,7 +291,7 @@ export default function AdminCreateShiftPage() {
       const dayIdx = daysArray.findIndex(
         (date) => format(date, "yyyy-MM-dd") === shift.date
       );
-      if (staffId && dayIdx >= 0) {
+      if (obj[staffId] && dayIdx >= 0) {
         obj[staffId][dayIdx] = shift.type;
       }
     });
