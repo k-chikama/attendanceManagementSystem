@@ -18,7 +18,7 @@ import {
 } from "date-fns";
 import { ja } from "date-fns/locale";
 import { User, getAllUsers } from "@/lib/auth";
-import { getShiftsByUser } from "@/lib/firestoreShifts";
+import { getAllShifts } from "@/lib/firestoreShifts";
 import AppLayout from "@/components/layout/layout";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
@@ -72,8 +72,8 @@ export default function ShiftsPage() {
       try {
         if (!user) return;
         setUsers(getAllUsers());
-        const userShifts = await getShiftsByUser(user.id);
-        setShifts(userShifts);
+        const allShifts = await getAllShifts();
+        setShifts(allShifts);
       } catch (error) {
         console.error("データの読み込みに失敗:", error);
         toast({

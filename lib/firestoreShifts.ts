@@ -71,3 +71,9 @@ export const updateShifts = async (
 export const deleteShift = async (shiftId: string) => {
   await deleteDoc(doc(db, "shifts", shiftId));
 };
+
+// 全シフトを取得
+export const getAllShifts = async () => {
+  const querySnapshot = await getDocs(collection(db, "shifts"));
+  return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+};
