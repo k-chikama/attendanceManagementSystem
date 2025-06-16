@@ -278,6 +278,26 @@ export default function AdminCreateShiftPage() {
     loadData();
   }, [router, toast, selectedDate, user, daysInMonth, month]);
 
+  // 既存シフトをcellShiftsRefに反映
+  useEffect(() => {
+    if (staff.length === 0 || existingShifts.length === 0) return;
+    const obj: { [staffId: string]: (ShiftType | null)[] } = {};
+    staff.forEach((member) => {
+      obj[member.id] = Array(daysInMonth).fill(null);
+    });
+    existingShifts.forEach((shift: any) => {
+      const staffId = shift.userId;
+      const dayIdx = daysArray.findIndex(
+        (date) => format(date, "yyyy-MM-dd") === shift.date
+      );
+      if (staffId && dayIdx >= 0) {
+        obj[staffId][dayIdx] = shift.type;
+      }
+    });
+    cellShiftsRef.current = obj;
+    forceUpdate();
+  }, [staff, existingShifts, daysInMonth, daysArray]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
