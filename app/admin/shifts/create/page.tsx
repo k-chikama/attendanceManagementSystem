@@ -720,145 +720,154 @@ export default function AdminCreateShiftPage() {
             </div>
             {/* スマホ用テーブル（縦軸：日付・横軸：スタッフ） */}
             <div className="overflow-x-auto block md:hidden">
-              <table className="min-w-[600px] border text-center">
-                <thead>
-                  <tr>
-                    <th className="w-24 bg-background sticky left-0 z-10">
-                      日付
-                    </th>
-                    {staff.map((member) => (
-                      <th
-                        key={member.id}
-                        className="border bg-muted text-xs font-normal px-1 py-2 min-w-[80px]"
-                      >
-                        <div className="flex flex-col items-center">
-                          <span className="font-medium text-xs truncate">
-                            {member.name}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground truncate">
-                            {member.department}
-                          </span>
-                        </div>
+              <div className="rounded-lg shadow bg-white p-2">
+                <table className="min-w-full border text-center text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="w-20 sticky left-0 z-10 bg-gray-100 font-bold text-xs py-2 border-r">
+                        日付
                       </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {daysArray.map((date, dayIdx) => (
-                    <tr key={dayIdx} className="h-12">
-                      <td className="bg-background sticky left-0 z-10 border-r min-w-[80px] text-left px-2">
-                        <span className="text-xs font-bold">
-                          {format(date, "M/d (E)", { locale: ja })}
-                        </span>
-                      </td>
-                      {staff.map((member) => {
-                        const isOpen =
-                          popover?.staffId === member.id &&
-                          popover?.dayIdx === dayIdx;
-                        const isSelected = selectedCells.some(
-                          (c) => c.staffId === member.id && c.dayIdx === dayIdx
-                        );
-                        return (
-                          <td
-                            key={member.id}
-                            className={cn(
-                              "border min-w-[36px] h-12 align-middle p-0 transition-all cursor-pointer",
-                              isOpen ? "ring-2 ring-primary/60 z-20" : "",
-                              isSelected
-                                ? "ring-2 ring-green-500 ring-offset-2"
-                                : ""
-                            )}
-                          >
-                            <div className="flex flex-col items-center justify-center h-full">
-                              <Popover
-                                open={isOpen}
-                                onOpenChange={(open) =>
-                                  !open && setPopover(null)
-                                }
-                              >
-                                <PopoverTrigger asChild>
-                                  <span
-                                    className="block w-full h-full flex items-center justify-center"
-                                    onClick={() => {
-                                      if (multiSelectMode) {
-                                        toggleCellSelection(member.id, dayIdx);
-                                      } else {
-                                        handleCellClick(member.id, dayIdx);
-                                      }
-                                    }}
-                                  >
-                                    {cellShiftsRef.current[member.id] &&
-                                    cellShiftsRef.current[member.id][dayIdx] ? (
-                                      <span
-                                        className={cn(
-                                          "inline-block w-8 h-8 rounded font-bold text-xs flex items-center justify-center mx-auto",
-                                          shiftTypes.find(
-                                            (t) =>
-                                              t.id ===
-                                              cellShiftsRef.current[member.id][
-                                                dayIdx
-                                              ]
-                                          )?.color
-                                        )}
-                                      >
-                                        {
-                                          shiftTypes.find(
-                                            (t) =>
-                                              t.id ===
-                                              cellShiftsRef.current[member.id][
-                                                dayIdx
-                                              ]
-                                          )?.name
-                                        }
-                                      </span>
-                                    ) : (
-                                      <span className="inline-block w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                                        -
-                                      </span>
-                                    )}
-                                  </span>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                  align="center"
-                                  className="p-2 w-40"
-                                >
-                                  <div className="grid grid-cols-2 gap-2">
-                                    {shiftTypes.map((type) => (
-                                      <button
-                                        key={type.id}
-                                        type="button"
-                                        className={cn(
-                                          "px-2 py-2 rounded font-bold text-xs flex items-center justify-center w-full",
-                                          type.color,
-                                          "hover:opacity-80 transition-opacity"
-                                        )}
-                                        onClick={() =>
-                                          handleSelectShiftType(type.id)
-                                        }
-                                      >
-                                        {type.name}
-                                      </button>
-                                    ))}
-                                    <button
-                                      type="button"
-                                      className="px-2 py-2 rounded text-xs w-full border text-muted-foreground hover:bg-muted"
-                                      onClick={() =>
-                                        handleSelectShiftType(null as any)
-                                      }
-                                    >
-                                      クリア
-                                    </button>
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
-                            </div>
-                          </td>
-                        );
-                      })}
+                      {staff.map((member) => (
+                        <th
+                          key={member.id}
+                          className="border bg-gray-100 font-bold text-xs px-1 py-2 min-w-[80px]"
+                        >
+                          <div className="flex flex-col items-center">
+                            <span className="font-bold text-xs truncate">
+                              {member.name}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground truncate">
+                              {member.department}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground truncate">
+                              {member.position}
+                            </span>
+                          </div>
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {daysArray.map((date, dayIdx) => (
+                      <tr key={dayIdx} className="h-14">
+                        <td className="bg-gray-50 sticky left-0 z-10 border-r min-w-[80px] text-left px-2 font-bold text-xs">
+                          <span>{format(date, "M/d (E)", { locale: ja })}</span>
+                        </td>
+                        {staff.map((member) => {
+                          const isOpen =
+                            popover?.staffId === member.id &&
+                            popover?.dayIdx === dayIdx;
+                          const isSelected = selectedCells.some(
+                            (c) =>
+                              c.staffId === member.id && c.dayIdx === dayIdx
+                          );
+                          return (
+                            <td
+                              key={member.id}
+                              className={cn(
+                                "border min-w-[48px] h-14 align-middle p-0 transition-all cursor-pointer bg-white",
+                                isOpen ? "ring-2 ring-primary/60 z-20" : "",
+                                isSelected
+                                  ? "ring-2 ring-green-500 ring-offset-2"
+                                  : ""
+                              )}
+                            >
+                              <div className="flex flex-col items-center justify-center h-full">
+                                <Popover
+                                  open={isOpen}
+                                  onOpenChange={(open) =>
+                                    !open && setPopover(null)
+                                  }
+                                >
+                                  <PopoverTrigger asChild>
+                                    <span
+                                      className="block w-full h-full flex items-center justify-center"
+                                      onClick={() => {
+                                        if (multiSelectMode) {
+                                          toggleCellSelection(
+                                            member.id,
+                                            dayIdx
+                                          );
+                                        } else {
+                                          handleCellClick(member.id, dayIdx);
+                                        }
+                                      }}
+                                    >
+                                      {cellShiftsRef.current[member.id] &&
+                                      cellShiftsRef.current[member.id][
+                                        dayIdx
+                                      ] ? (
+                                        <span
+                                          className={cn(
+                                            "inline-block w-10 h-10 rounded-lg font-bold text-sm flex items-center justify-center mx-auto shadow",
+                                            shiftTypes.find(
+                                              (t) =>
+                                                t.id ===
+                                                cellShiftsRef.current[
+                                                  member.id
+                                                ][dayIdx]
+                                            )?.color
+                                          )}
+                                        >
+                                          {
+                                            shiftTypes.find(
+                                              (t) =>
+                                                t.id ===
+                                                cellShiftsRef.current[
+                                                  member.id
+                                                ][dayIdx]
+                                            )?.name
+                                          }
+                                        </span>
+                                      ) : (
+                                        <span className="inline-block w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                                          -
+                                        </span>
+                                      )}
+                                    </span>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    align="center"
+                                    className="p-2 w-40"
+                                  >
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {shiftTypes.map((type) => (
+                                        <button
+                                          key={type.id}
+                                          type="button"
+                                          className={cn(
+                                            "px-2 py-2 rounded font-bold text-xs flex items-center justify-center w-full",
+                                            type.color,
+                                            "hover:opacity-80 transition-opacity"
+                                          )}
+                                          onClick={() =>
+                                            handleSelectShiftType(type.id)
+                                          }
+                                        >
+                                          {type.name}
+                                        </button>
+                                      ))}
+                                      <button
+                                        type="button"
+                                        className="px-2 py-2 rounded text-xs w-full border text-muted-foreground hover:bg-muted"
+                                        onClick={() =>
+                                          handleSelectShiftType(null as any)
+                                        }
+                                      >
+                                        クリア
+                                      </button>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
             {/* 一括編集UI（共通） */}
             {selectedCells.length > 0 && (
