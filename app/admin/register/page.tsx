@@ -122,6 +122,7 @@ export default function AdminRegisterPage() {
                       setFormData({ ...formData, email: e.target.value })
                     }
                     required
+                    autoComplete="username"
                   />
                 </div>
                 <div className="grid gap-2">

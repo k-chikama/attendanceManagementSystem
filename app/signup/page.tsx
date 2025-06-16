@@ -106,6 +106,7 @@ export default function SignupPage() {
                 disabled={isLoading}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                 placeholder="example@example.com"
+                autoComplete="username"
               />
             </div>
 

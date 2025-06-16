@@ -141,6 +141,7 @@ export default function RegisterPage() {
                   onChange={handleInputChange}
                   required
                   disabled={isLoading}
+                  autoComplete="username"
                 />
               </div>
 

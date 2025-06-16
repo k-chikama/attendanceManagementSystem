@@ -155,6 +155,7 @@ export default function ProfilePage() {
                       onChange={handleInputChange}
                       disabled={isLoading}
                       required
+                      autoComplete="username"
                     />
                   ) : (
                     <div className="text-lg font-medium">{user.email}</div>

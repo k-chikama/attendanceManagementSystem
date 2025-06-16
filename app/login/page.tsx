@@ -83,6 +83,7 @@ export default function LoginPage() {
                       setFormData({ ...formData, email: e.target.value })
                     }
                     required
+                    autoComplete="username"
                   />
                 </div>
                 <div className="grid gap-2">
