@@ -63,6 +63,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const formSchema = z.object({
   type: z.enum(["有給休暇", "特別休暇", "慶弔休暇", "その他"]),
@@ -109,10 +111,11 @@ export default function LeavePage() {
       (async () => {
         const all = await getLeaveRequests();
         setAllRequests(all);
-        const users = getAllUsers();
+        const usersSnapshot = await getDocs(collection(db, "users"));
         const map: { [key: string]: string } = {};
-        users.forEach((u) => {
-          map[u.id] = u.name;
+        usersSnapshot.forEach((doc) => {
+          const userData = doc.data();
+          map[doc.id] = userData.name || "不明";
         });
         setUserMap(map);
       })();
