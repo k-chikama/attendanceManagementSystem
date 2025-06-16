@@ -547,36 +547,22 @@ export default function AdminCreateShiftPage() {
                   {">"}
                 </Button>
               </div>
-              {/* シフト種別パレット */}
-              <div className="flex flex-wrap gap-2">
-                {shiftTypes.map((type) => (
-                  <span
-                    key={type.id}
-                    className={cn(
-                      "px-3 py-2 rounded font-bold text-center text-xs",
-                      type.color
-                    )}
-                    style={{ minWidth: 60 }}
-                  >
-                    {type.name}
+              {/* 複数選択モードボタン */}
+              <div className="flex items-center gap-2 mt-2">
+                <Button
+                  variant={multiSelectMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setMultiSelectMode((v) => !v)}
+                  aria-pressed={multiSelectMode}
+                >
+                  {multiSelectMode ? "複数選択モード中" : "複数選択モード"}
+                </Button>
+                {multiSelectMode && (
+                  <span className="text-xs text-muted-foreground">
+                    セルをタップ/クリックで複数選択・解除できます
                   </span>
-                ))}
+                )}
               </div>
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <Button
-                variant={multiSelectMode ? "default" : "outline"}
-                size="sm"
-                onClick={() => setMultiSelectMode((v) => !v)}
-                aria-pressed={multiSelectMode}
-              >
-                {multiSelectMode ? "複数選択モード中" : "複数選択モード"}
-              </Button>
-              {multiSelectMode && (
-                <span className="text-xs text-muted-foreground">
-                  セルをタップ/クリックで複数選択・解除できます
-                </span>
-              )}
             </div>
             <CardTitle className="flex items-center mt-4">
               <CalendarDays className="h-5 w-5 mr-2" />
@@ -587,8 +573,153 @@ export default function AdminCreateShiftPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* テーブル型（スマホ・PC共通） */}
-            <div className="overflow-x-auto">
+            {/* PC用テーブル（横軸：日付・縦軸：スタッフ） */}
+            <div className="overflow-x-auto hidden md:block">
+              <table className="min-w-[1200px] border text-center">
+                <thead>
+                  <tr>
+                    <th className="w-40 bg-background sticky left-0 z-10">
+                      スタッフ
+                    </th>
+                    {daysArray.map((date, i) => (
+                      <th
+                        key={i}
+                        className="border bg-muted text-xs font-normal px-1 py-2"
+                      >
+                        {getDate(date)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {staff.map((member) => (
+                    <tr key={member.id} className="h-12">
+                      <td className="bg-background sticky left-0 z-10 border-r min-w-[120px] text-left px-2">
+                        <div className="flex items-center gap-2">
+                          <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                            <User className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {member.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {member.department} / {member.position}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      {daysArray.map((date, dayIdx) => {
+                        const isOpen =
+                          popover?.staffId === member.id &&
+                          popover?.dayIdx === dayIdx;
+                        const isSelected = selectedCells.some(
+                          (c) => c.staffId === member.id && c.dayIdx === dayIdx
+                        );
+                        return (
+                          <td
+                            key={dayIdx}
+                            className={cn(
+                              "border min-w-[36px] h-12 align-middle p-0 transition-all cursor-pointer",
+                              isOpen ? "ring-2 ring-primary/60 z-20" : "",
+                              isSelected
+                                ? "ring-2 ring-green-500 ring-offset-2"
+                                : ""
+                            )}
+                          >
+                            <div className="flex flex-col items-center justify-center h-full">
+                              <Popover
+                                open={isOpen}
+                                onOpenChange={(open) =>
+                                  !open && setPopover(null)
+                                }
+                              >
+                                <PopoverTrigger asChild>
+                                  <span
+                                    className="block w-full h-full flex items-center justify-center"
+                                    onClick={() => {
+                                      if (multiSelectMode) {
+                                        toggleCellSelection(member.id, dayIdx);
+                                      } else {
+                                        handleCellClick(member.id, dayIdx);
+                                      }
+                                    }}
+                                  >
+                                    {cellShiftsRef.current[member.id] &&
+                                    cellShiftsRef.current[member.id][dayIdx] ? (
+                                      <span
+                                        className={cn(
+                                          "inline-block w-8 h-8 rounded font-bold text-xs flex items-center justify-center mx-auto",
+                                          shiftTypes.find(
+                                            (t) =>
+                                              t.id ===
+                                              cellShiftsRef.current[member.id][
+                                                dayIdx
+                                              ]
+                                          )?.color
+                                        )}
+                                      >
+                                        {
+                                          shiftTypes.find(
+                                            (t) =>
+                                              t.id ===
+                                              cellShiftsRef.current[member.id][
+                                                dayIdx
+                                              ]
+                                          )?.name
+                                        }
+                                      </span>
+                                    ) : (
+                                      <span className="inline-block w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                                        -
+                                      </span>
+                                    )}
+                                  </span>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  align="center"
+                                  className="p-2 w-40"
+                                >
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {shiftTypes.map((type) => (
+                                      <button
+                                        key={type.id}
+                                        type="button"
+                                        className={cn(
+                                          "px-2 py-2 rounded font-bold text-xs flex items-center justify-center w-full",
+                                          type.color,
+                                          "hover:opacity-80 transition-opacity"
+                                        )}
+                                        onClick={() =>
+                                          handleSelectShiftType(type.id)
+                                        }
+                                      >
+                                        {type.name}
+                                      </button>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      className="px-2 py-2 rounded text-xs w-full border text-muted-foreground hover:bg-muted"
+                                      onClick={() =>
+                                        handleSelectShiftType(null as any)
+                                      }
+                                    >
+                                      クリア
+                                    </button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* スマホ用テーブル（縦軸：日付・横軸：スタッフ） */}
+            <div className="overflow-x-auto block md:hidden">
               <table className="min-w-[600px] border text-center">
                 <thead>
                   <tr>
