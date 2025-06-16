@@ -49,6 +49,7 @@ import {
 import { useUser } from "@/contexts/UserContext";
 import { AttendanceRecord, getUserAttendance } from "@/lib/attendance";
 import AppLayout from "@/components/layout/layout";
+import { getShiftsByUser } from "@/lib/firestoreShifts";
 
 export default function AttendancePage() {
   const user = useUser();
@@ -57,6 +58,7 @@ export default function AttendancePage() {
   const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>(
     []
   );
+  const [shifts, setShifts] = useState<any[]>([]);
 
   // Load attendance data
   useEffect(() => {
@@ -78,6 +80,11 @@ export default function AttendancePage() {
       setFilteredRecords(filtered);
     }
   }, [attendanceData, selectedMonth]);
+
+  useEffect(() => {
+    if (!user) return;
+    getShiftsByUser(user.uid).then(setShifts);
+  }, [user]);
 
   if (!user) {
     return (
@@ -197,6 +204,28 @@ export default function AttendancePage() {
 
     return breakStrings.length > 0 ? breakStrings.join(", ") : "-";
   };
+
+  function getShiftTypeLabel(type: string | undefined): string | undefined {
+    switch (type) {
+      case "early":
+        return "早番";
+      case "late":
+        return "遅番";
+      case "dayoff":
+        return "休み";
+      case "al":
+        return "AL";
+      case "overtime":
+        return "残業";
+      default:
+        return undefined;
+    }
+  }
+
+  function getShiftTypeForDate(date: string) {
+    const shift = shifts.find((s) => s.date === date);
+    return shift ? getShiftTypeLabel(shift.type) : "-";
+  }
 
   return (
     <AppLayout>
@@ -403,6 +432,9 @@ export default function AttendancePage() {
                                 未登録
                               </Badge>
                             )}
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {getShiftTypeForDate(dateStr)}
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
