@@ -800,7 +800,10 @@ export default function AdminCreateShiftPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
-              <Select value={bulkShiftType} onValueChange={setBulkShiftType}>
+              <Select
+                value={bulkShiftType}
+                onValueChange={(value) => setBulkShiftType(value as ShiftType)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="シフト種別を選択" />
                 </SelectTrigger>
