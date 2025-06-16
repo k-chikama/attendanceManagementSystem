@@ -199,7 +199,7 @@ export default function AdminLeaveRequestsPage() {
                       .map((request) => (
                         <TableRow key={request.id}>
                           <TableCell className="text-left">
-                            {users[request.userId] || request.userId}
+                            {users[request.userId] || "不明"}
                           </TableCell>
                           <TableCell className="text-left">
                             {request.type}
@@ -363,7 +363,7 @@ export default function AdminLeaveRequestsPage() {
                       className="border rounded-lg p-4 bg-white"
                     >
                       <div className="mb-2 font-bold text-base">
-                        {users[request.userId] || request.userId}
+                        {users[request.userId] || "不明"}
                       </div>
                       <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-sm">
                         <div className="text-muted-foreground">種類</div>
