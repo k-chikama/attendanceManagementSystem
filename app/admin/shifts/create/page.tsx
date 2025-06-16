@@ -375,53 +375,13 @@ export default function AdminCreateShiftPage() {
   };
 
   // シフト種別選択
-  const handleSelectShiftType = async (shiftType: ShiftType | null) => {
+  const handleSelectShiftType = (shiftType: ShiftType | null) => {
     if (!popover) return;
     const { staffId, dayIdx } = popover;
     if (!cellShiftsRef.current[staffId]) return;
     cellShiftsRef.current[staffId][dayIdx] = shiftType;
     setPopover(null);
     forceUpdate();
-
-    // Firestore上の既存シフトを検索
-    const dateStr = format(addDays(month, dayIdx), "yyyy-MM-dd");
-    const shift = existingShifts.find(
-      (s) => s.userId === staffId && s.date === dateStr
-    );
-    const shiftTypeDef = shiftTypes.find((t) => t.id === shiftType);
-    if (shiftType && shiftTypeDef) {
-      if (shift) {
-        await updateShift(shift.id, {
-          type: shiftTypeDef.id,
-          startTime: shiftTypeDef.defaultStartTime,
-          endTime: shiftTypeDef.defaultEndTime,
-          updatedAt: new Date().toISOString(),
-        });
-        toast({ title: "シフトを更新しました" });
-      } else {
-        await addShift({
-          userId: staffId,
-          date: dateStr,
-          startTime: shiftTypeDef.defaultStartTime,
-          endTime: shiftTypeDef.defaultEndTime,
-          type: shiftTypeDef.id,
-          status: "approved",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        toast({ title: "シフトを登録しました" });
-      }
-    }
-    if (!shiftType && shift) {
-      await deleteShift(shift.id);
-      toast({ title: "シフトを削除しました" });
-    }
-
-    // 編集後にFirestoreから最新データを再取得
-    const year = month.getFullYear();
-    const m = month.getMonth() + 1;
-    const shifts = await getShiftsByMonth(year, m);
-    setExistingShifts(shifts);
   };
 
   // Firestoreでシフト登録
@@ -466,6 +426,8 @@ export default function AdminCreateShiftPage() {
       });
     }
 
+    const changesCount = changes.length;
+
     try {
       for (const change of changes) {
         if (change.type === "add") {
@@ -502,7 +464,7 @@ export default function AdminCreateShiftPage() {
       }
       toast({
         title: "シフトを登録しました",
-        description: `${changes.length}件のシフトを更新しました。`,
+        description: `${changesCount}件のシフトを更新しました。`,
       });
     } catch (error) {
       console.error("シフト登録エラー:", error);
