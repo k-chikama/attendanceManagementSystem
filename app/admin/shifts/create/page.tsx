@@ -229,6 +229,9 @@ export default function AdminCreateShiftPage() {
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
   const [bulkShiftType, setBulkShiftType] = useState<ShiftType | "">("");
 
+  // 複数選択モードの管理
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+
   // 初期化
   useEffect(() => {
     const obj: { [staffId: string]: (ShiftType | null)[] } = {};
@@ -560,6 +563,21 @@ export default function AdminCreateShiftPage() {
                 ))}
               </div>
             </div>
+            <div className="flex items-center gap-2 mt-2">
+              <Button
+                variant={multiSelectMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setMultiSelectMode((v) => !v)}
+                aria-pressed={multiSelectMode}
+              >
+                {multiSelectMode ? "複数選択モード中" : "複数選択モード"}
+              </Button>
+              {multiSelectMode && (
+                <span className="text-xs text-muted-foreground">
+                  セルをタップ/クリックで複数選択・解除できます
+                </span>
+              )}
+            </div>
             <CardTitle className="flex items-center mt-4">
               <CalendarDays className="h-5 w-5 mr-2" />
               {format(month, "yyyy年M月", { locale: ja })}のシフト表
@@ -631,10 +649,7 @@ export default function AdminCreateShiftPage() {
                                   <span
                                     className="block w-full h-full flex items-center justify-center"
                                     onClick={() => {
-                                      if (
-                                        window.event &&
-                                        (window.event as MouseEvent).shiftKey
-                                      ) {
+                                      if (multiSelectMode) {
                                         toggleCellSelection(member.id, dayIdx);
                                       } else {
                                         handleCellClick(member.id, dayIdx);
