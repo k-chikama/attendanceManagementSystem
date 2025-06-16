@@ -21,6 +21,7 @@ import { User, getCurrentUser, getAllUsers } from "@/lib/auth";
 import { getShiftsByUser } from "@/lib/firestoreShifts";
 import AppLayout from "@/components/layout/layout";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useUser } from "@/contexts/UserContext";
 
 // シフト種別を日本語ラベルに変換
 function getShiftTypeLabel(type: string | undefined): string | undefined {
@@ -58,11 +59,10 @@ function ShiftBadge({ type }: { type: string | undefined }) {
 }
 
 export default function ShiftsPage() {
-  const router = useRouter();
+  const user = useUser();
   const { toast } = useToast();
-  const [user, setUser] = useState<Omit<User, "password"> | null>(null);
   const [shifts, setShifts] = useState<any[]>([]);
-  const [users, setUsers] = useState<Omit<User, "password">[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -70,17 +70,9 @@ export default function ShiftsPage() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const currentUser = getCurrentUser();
-        if (!currentUser) {
-          router.push("/login");
-          return;
-        }
-        setUser(currentUser);
+        if (!user) return;
         setUsers(getAllUsers());
-        // Firestoreから全ユーザー分のシフトを取得
-        // 必要に応じて全ユーザー分をまとめて取得する関数をlib/firestoreShifts.tsに追加してもOK
-        // ここでは例として、現在のユーザー分のみ取得
-        const userShifts = await getShiftsByUser(currentUser.id);
+        const userShifts = await getShiftsByUser(user.id);
         setShifts(userShifts);
       } catch (error) {
         console.error("データの読み込みに失敗:", error);
@@ -94,7 +86,7 @@ export default function ShiftsPage() {
       }
     };
     loadData();
-  }, [router, toast]);
+  }, [user, toast]);
 
   // 月の日付を生成
   const monthDates = useState(() => {
@@ -123,7 +115,11 @@ export default function ShiftsPage() {
   };
 
   if (!user) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (

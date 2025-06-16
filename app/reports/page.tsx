@@ -51,29 +51,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { User, getCurrentUser } from "@/lib/auth";
+import { useUser } from "@/contexts/UserContext";
 import { AttendanceRecord, getUserAttendance } from "@/lib/attendance";
 import AppLayout from "@/components/layout/layout";
 
 export default function ReportsPage() {
-  const [user, setUser] = useState<Omit<User, "password"> | null>(null);
+  const user = useUser();
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>(
     []
   );
 
-  // Load user and attendance data
+  // Load attendance data
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-
-      // Get user's attendance records
-      const attendance = getUserAttendance(currentUser.id);
-      setAttendanceData(attendance);
-    }
-  }, []);
+    if (!user) return;
+    const attendance = getUserAttendance(user.id);
+    setAttendanceData(attendance);
+  }, [user]);
 
   // Filter records when month changes
   useEffect(() => {
@@ -90,7 +85,11 @@ export default function ReportsPage() {
   }, [attendanceData, selectedMonth]);
 
   if (!user) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   // Handle month change

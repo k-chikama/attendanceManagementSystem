@@ -50,6 +50,7 @@ import {
   type LeaveRequest,
 } from "@/lib/leave";
 import AppLayout from "@/components/layout/layout";
+import { useUser } from "@/contexts/UserContext";
 
 const formSchema = z.object({
   type: z.enum(["有給休暇", "特別休暇", "慶弔休暇", "その他"]),
@@ -63,9 +64,8 @@ const formSchema = z.object({
 });
 
 export default function LeavePage() {
-  const router = useRouter();
+  const user = useUser();
   const { toast } = useToast();
-  const [user, setUser] = useState<any>(null);
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -78,14 +78,9 @@ export default function LeavePage() {
   });
 
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-      router.push("/login");
-      return;
-    }
-    setUser(currentUser);
-    setRequests(getUserLeaveRequests(currentUser.id));
-  }, [router]);
+    if (!user) return;
+    setRequests(getUserLeaveRequests(user.id));
+  }, [user]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) return;
@@ -143,7 +138,11 @@ export default function LeavePage() {
   };
 
   if (!user) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
