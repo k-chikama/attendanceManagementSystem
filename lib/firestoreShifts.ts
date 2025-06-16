@@ -77,3 +77,16 @@ export const getAllShifts = async () => {
   const querySnapshot = await getDocs(collection(db, "shifts"));
   return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
+
+// 指定月の全シフトを取得
+export const getShiftsByMonth = async (year: number, month: number) => {
+  const start = `${year}-${String(month).padStart(2, "0")}-01`;
+  const end = `${year}-${String(month).padStart(2, "0")}-31`;
+  const q = query(
+    collection(db, "shifts"),
+    where("date", ">=", start),
+    where("date", "<=", end)
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+};

@@ -46,7 +46,7 @@ import { ja } from "date-fns/locale";
 import { getAllUsers as getAllUsersFirestore } from "@/lib/firestoreUsers";
 import {
   addShift,
-  getShiftsByUser,
+  getShiftsByMonth,
   deleteShift,
   updateShift,
 } from "@/lib/firestoreShifts";
@@ -260,10 +260,11 @@ export default function AdminCreateShiftPage() {
           updatedAt: u.updatedAt || "",
         }));
         setStaff(allStaff);
-        // 選択された日付のシフトを取得
-        getShiftsByUser(format(selectedDate, "yyyy-MM-dd")).then(
-          setExistingShifts
-        );
+        // 選択された月の全シフトを取得
+        const year = month.getFullYear();
+        const m = month.getMonth() + 1;
+        const shifts = await getShiftsByMonth(year, m);
+        setExistingShifts(shifts);
       } catch (error) {
         console.error("データの読み込みに失敗:", error);
         toast({
@@ -363,7 +364,9 @@ export default function AdminCreateShiftPage() {
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       setSelectedDate(date);
-      getShiftsByUser(format(date, "yyyy-MM-dd")).then(setExistingShifts);
+      getShiftsByMonth(date.getFullYear(), date.getMonth() + 1).then(
+        setExistingShifts
+      );
     }
   };
 
@@ -412,14 +415,14 @@ export default function AdminCreateShiftPage() {
         toast({ title: "シフトを登録しました" });
       }
       // 再取得
-      getShiftsByUser(format(selectedDate, "yyyy-MM-dd")).then(
+      getShiftsByMonth(month.getFullYear(), month.getMonth() + 1).then(
         setExistingShifts
       );
     }
     if (!shiftType && shift) {
       // クリア時は削除
       await deleteShift(shift.id);
-      getShiftsByUser(format(selectedDate, "yyyy-MM-dd")).then(
+      getShiftsByMonth(month.getFullYear(), month.getMonth() + 1).then(
         setExistingShifts
       );
       toast({ title: "シフトを削除しました" });
@@ -722,8 +725,9 @@ export default function AdminCreateShiftPage() {
                                     ) {
                                       await deleteShift(shift.id);
                                       // 再取得
-                                      getShiftsByUser(
-                                        format(selectedDate, "yyyy-MM-dd")
+                                      getShiftsByMonth(
+                                        month.getFullYear(),
+                                        month.getMonth() + 1
                                       ).then(setExistingShifts);
                                       toast({ title: "シフトを削除しました" });
                                     }
