@@ -427,18 +427,55 @@ export default function AdminCreateShiftPage() {
   // Firestoreでシフト登録
   const handleSaveShifts = async () => {
     setIsSubmitting(true);
-    const shiftsToSave: any[] = [];
     const currentMonth = month;
+    const changes: {
+      type: "add" | "update" | "delete";
+      staffId: string;
+      date: string;
+      shiftType?: ShiftType;
+      shiftId?: string;
+    }[] = [];
+
     for (const staffId of staff.map((s) => s.id)) {
       const cellShifts = cellShiftsRef.current[staffId] || [];
       cellShifts.forEach((shiftType, dayIdx) => {
+        const date = format(addDays(currentMonth, dayIdx), "yyyy-MM-dd");
+        const existing = existingShifts.find(
+          (s) => s.userId === staffId && s.date === date
+        );
         if (shiftType) {
-          const date = addDays(currentMonth, dayIdx);
-          const shiftTypeDef = shiftTypes.find((t) => t.id === shiftType);
+          if (!existing) {
+            // 新規追加
+            changes.push({ type: "add", staffId, date, shiftType });
+          } else if (existing.type !== shiftType) {
+            // 値が違う場合のみ更新
+            changes.push({
+              type: "update",
+              staffId,
+              date,
+              shiftType,
+              shiftId: existing.id,
+            });
+          }
+          // 既存と同じ値なら何もしない
+        } else if (existing) {
+          // 画面上が空で既存がある場合のみ削除
+          changes.push({ type: "delete", staffId, date, shiftId: existing.id });
+        }
+        // 画面上も空、既存もなし→何もしない
+      });
+    }
+
+    try {
+      for (const change of changes) {
+        if (change.type === "add") {
+          const shiftTypeDef = shiftTypes.find(
+            (t) => t.id === change.shiftType
+          );
           if (shiftTypeDef) {
-            shiftsToSave.push({
-              userId: staffId,
-              date: format(date, "yyyy-MM-dd"),
+            await addShift({
+              userId: change.staffId,
+              date: change.date,
               startTime: shiftTypeDef.defaultStartTime,
               endTime: shiftTypeDef.defaultEndTime,
               type: shiftTypeDef.id,
@@ -447,24 +484,25 @@ export default function AdminCreateShiftPage() {
               updatedAt: new Date().toISOString(),
             });
           }
+        } else if (change.type === "update" && change.shiftId) {
+          const shiftTypeDef = shiftTypes.find(
+            (t) => t.id === change.shiftType
+          );
+          if (shiftTypeDef) {
+            await updateShift(change.shiftId, {
+              type: shiftTypeDef.id,
+              startTime: shiftTypeDef.defaultStartTime,
+              endTime: shiftTypeDef.defaultEndTime,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        } else if (change.type === "delete" && change.shiftId) {
+          await deleteShift(change.shiftId);
         }
-      });
-    }
-    try {
-      // 1. 既存のその月の全シフトを削除
-      const year = month.getFullYear();
-      const m = month.getMonth() + 1;
-      const existing = await getShiftsByMonth(year, m);
-      for (const shift of existing) {
-        await deleteShift(shift.id);
-      }
-      // 2. 新しいシフトを全件登録
-      for (const shift of shiftsToSave) {
-        await addShift(shift);
       }
       toast({
         title: "シフトを登録しました",
-        description: shiftsToSave.length + "件のシフトを登録しました。",
+        description: `${changes.length}件のシフトを更新しました。`,
       });
     } catch (error) {
       console.error("シフト登録エラー:", error);
