@@ -17,7 +17,7 @@ import {
   getDay,
 } from "date-fns";
 import { ja } from "date-fns/locale";
-import { User, getAllUsers } from "@/lib/auth";
+import { getAllUsers } from "@/lib/firestoreUsers";
 import { getAllShifts } from "@/lib/firestoreShifts";
 import AppLayout from "@/components/layout/layout";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -71,7 +71,8 @@ export default function ShiftsPage() {
       setIsLoading(true);
       try {
         if (!user) return;
-        setUsers(getAllUsers());
+        const usersFromFirestore = await getAllUsers();
+        setUsers(usersFromFirestore);
         const allShifts = await getAllShifts();
         setShifts(allShifts);
       } catch (error) {
@@ -175,12 +176,12 @@ export default function ShiftsPage() {
                   </thead>
                   <tbody>
                     {users.map((member) => (
-                      <tr key={member.id}>
+                      <tr key={member.uid}>
                         <td className="border bg-background sticky left-0 z-10 text-left font-bold px-1.5 py-1 min-w-[100px]">
                           {member.name}
                         </td>
                         {monthDates.map(({ date }, dayIdx) => {
-                          const shift = findShift(member.id, date);
+                          const shift = findShift(member.uid, date);
                           return (
                             <td
                               key={dayIdx}
