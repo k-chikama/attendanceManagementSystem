@@ -414,17 +414,10 @@ export default function AdminCreateShiftPage() {
         });
         toast({ title: "シフトを登録しました" });
       }
-      // 再取得
-      getShiftsByMonth(month.getFullYear(), month.getMonth() + 1).then(
-        setExistingShifts
-      );
     }
     if (!shiftType && shift) {
       // クリア時は削除
       await deleteShift(shift.id);
-      getShiftsByMonth(month.getFullYear(), month.getMonth() + 1).then(
-        setExistingShifts
-      );
       toast({ title: "シフトを削除しました" });
     }
   };
@@ -710,32 +703,6 @@ export default function AdminCreateShiftPage() {
                                   </div>
                                 </PopoverContent>
                               </Popover>
-                              {/* Firestore上に既存シフトがある場合のみ削除ボタンを表示 */}
-                              {shift && (
-                                <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  className="mt-1 w-6 h-6"
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (
-                                      window.confirm(
-                                        "このシフトを削除しますか？"
-                                      )
-                                    ) {
-                                      await deleteShift(shift.id);
-                                      // 再取得
-                                      getShiftsByMonth(
-                                        month.getFullYear(),
-                                        month.getMonth() + 1
-                                      ).then(setExistingShifts);
-                                      toast({ title: "シフトを削除しました" });
-                                    }
-                                  }}
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                              )}
                             </div>
                           </td>
                         );
