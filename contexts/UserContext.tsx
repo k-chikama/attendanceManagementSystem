@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { getUserProfile } from "@/lib/firestoreUsers";
@@ -34,12 +34,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const [user, setUser] = useState<SafeUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const isFirstCheck = useRef(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       try {
         if (!firebaseUser) {
+          if (isFirstCheck.current) {
+            // 初回はローディング解除のみ
+            setLoading(false);
+            isFirstCheck.current = false;
+            setUser(null);
+            return;
+          }
           if (typeof window !== "undefined") {
             toast({
               title: "セッション切れ",
@@ -49,6 +57,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           }
           setUser(null);
         } else {
+          isFirstCheck.current = false;
           let profile = await getUserProfile(firebaseUser.uid);
           let retry = 0;
           while (!profile && retry < 3) {
