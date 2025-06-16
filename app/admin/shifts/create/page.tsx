@@ -416,6 +416,12 @@ export default function AdminCreateShiftPage() {
       await deleteShift(shift.id);
       toast({ title: "シフトを削除しました" });
     }
+
+    // 編集後にFirestoreから最新データを再取得
+    const year = month.getFullYear();
+    const m = month.getMonth() + 1;
+    const shifts = await getShiftsByMonth(year, m);
+    setExistingShifts(shifts);
   };
 
   // Firestoreでシフト登録
