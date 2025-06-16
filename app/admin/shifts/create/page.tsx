@@ -526,6 +526,10 @@ export default function AdminCreateShiftPage() {
       <div className="container mx-auto py-8 px-2 sm:px-6 lg:px-8">
         <Card>
           <CardHeader>
+            <CardTitle className="flex items-center mb-2 mt-2">
+              <CalendarDays className="h-5 w-5 mr-2" />
+              {format(month, "yyyy年M月", { locale: ja })}のシフト表
+            </CardTitle>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               {/* 月選択 */}
               <div className="flex items-center gap-2">
@@ -564,10 +568,6 @@ export default function AdminCreateShiftPage() {
                 )}
               </div>
             </div>
-            <CardTitle className="flex items-center mt-4">
-              <CalendarDays className="h-5 w-5 mr-2" />
-              {format(month, "yyyy年M月", { locale: ja })}のシフト表
-            </CardTitle>
             <CardDescription>
               セルをクリックしてシフト種別を選択し、登録ボタンで保存してください。
             </CardDescription>
