@@ -569,58 +569,49 @@ export default function AdminCreateShiftPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* PC用テーブル */}
-            <div className="overflow-x-auto hidden md:block">
-              <table className="min-w-[1200px] border text-center">
+            {/* テーブル型（スマホ・PC共通） */}
+            <div className="overflow-x-auto">
+              <table className="min-w-[600px] border text-center">
                 <thead>
                   <tr>
-                    <th className="w-40 bg-background sticky left-0 z-10">
-                      スタッフ
+                    <th className="w-24 bg-background sticky left-0 z-10">
+                      日付
                     </th>
-                    {daysArray.map((date, i) => (
+                    {staff.map((member) => (
                       <th
-                        key={i}
-                        className="border bg-muted text-xs font-normal px-1 py-2"
+                        key={member.id}
+                        className="border bg-muted text-xs font-normal px-1 py-2 min-w-[80px]"
                       >
-                        {getDate(date)}
+                        <div className="flex flex-col items-center">
+                          <span className="font-medium text-xs truncate">
+                            {member.name}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground truncate">
+                            {member.department}
+                          </span>
+                        </div>
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {staff.map((member) => (
-                    <tr key={member.id} className="h-12">
-                      <td className="bg-background sticky left-0 z-10 border-r min-w-[120px] text-left px-2">
-                        <div className="flex items-center gap 2">
-                          <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                            <User className="h 4 w 4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {member.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {member.department} / {member.position}
-                            </p>
-                          </div>
-                        </div>
+                  {daysArray.map((date, dayIdx) => (
+                    <tr key={dayIdx} className="h-12">
+                      <td className="bg-background sticky left-0 z-10 border-r min-w-[80px] text-left px-2">
+                        <span className="text-xs font-bold">
+                          {format(date, "M/d (E)", { locale: ja })}
+                        </span>
                       </td>
-                      {daysArray.map((date, dayIdx) => {
-                        const isOpen: boolean =
+                      {staff.map((member) => {
+                        const isOpen =
                           popover?.staffId === member.id &&
                           popover?.dayIdx === dayIdx;
-                        // Firestore上の既存シフトを検索
-                        const shift = existingShifts.find(
-                          (s) =>
-                            s.userId === member.id &&
-                            s.date === format(date, "yyyy-MM-dd")
-                        );
                         const isSelected = selectedCells.some(
                           (c) => c.staffId === member.id && c.dayIdx === dayIdx
                         );
                         return (
                           <td
-                            key={dayIdx}
+                            key={member.id}
                             className={cn(
                               "border min-w-[36px] h-12 align-middle p-0 transition-all cursor-pointer",
                               isOpen ? "ring-2 ring-primary/60 z-20" : "",
@@ -685,7 +676,7 @@ export default function AdminCreateShiftPage() {
                                   align="center"
                                   className="p-2 w-40"
                                 >
-                                  <div className="grid grid-cols-2 gap 2">
+                                  <div className="grid grid-cols-2 gap-2">
                                     {shiftTypes.map((type) => (
                                       <button
                                         key={type.id}
@@ -723,142 +714,24 @@ export default function AdminCreateShiftPage() {
                 </tbody>
               </table>
             </div>
-            {/* スマホ用：日付縦軸・スタッフ横軸リスト */}
-            <div className="block md:hidden">
-              <div className="space-y-6">
-                {daysArray.map((date, dayIdx) => (
-                  <div key={dayIdx} className="border rounded-lg bg-white">
-                    <div className="px-4 py-2 bg-muted font-bold flex items-center gap-2">
-                      <span className="text-base">
-                        {format(date, "M/d (E)", { locale: ja })}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 p-2">
-                      {staff.map((member) => {
-                        const isOpen =
-                          popover?.staffId === member.id &&
-                          popover?.dayIdx === dayIdx;
-                        const isSelected = selectedCells.some(
-                          (c) => c.staffId === member.id && c.dayIdx === dayIdx
-                        );
-                        return (
-                          <div
-                            key={member.id}
-                            className="flex items-center gap-2"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm truncate">
-                                {member.name}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {member.department} / {member.position}
-                              </div>
-                            </div>
-                            <Popover
-                              open={isOpen}
-                              onOpenChange={(open) => !open && setPopover(null)}
-                            >
-                              <PopoverTrigger asChild>
-                                <span
-                                  className={cn(
-                                    "inline-block w-16 h-8 rounded font-bold text-xs flex items-center justify-center cursor-pointer border",
-                                    cellShiftsRef.current[member.id] &&
-                                      cellShiftsRef.current[member.id][dayIdx]
-                                      ? shiftTypes.find(
-                                          (t) =>
-                                            t.id ===
-                                            cellShiftsRef.current[member.id][
-                                              dayIdx
-                                            ]
-                                        )?.color
-                                      : "bg-muted text-muted-foreground",
-                                    isOpen ? "ring-2 ring-primary/60 z-20" : "",
-                                    isSelected
-                                      ? "ring-2 ring-green-500 ring-offset-2"
-                                      : ""
-                                  )}
-                                  onClick={() => {
-                                    if (
-                                      window.event &&
-                                      (window.event as MouseEvent).shiftKey
-                                    ) {
-                                      toggleCellSelection(member.id, dayIdx);
-                                    } else {
-                                      handleCellClick(member.id, dayIdx);
-                                    }
-                                  }}
-                                >
-                                  {cellShiftsRef.current[member.id] &&
-                                  cellShiftsRef.current[member.id][dayIdx]
-                                    ? shiftTypes.find(
-                                        (t) =>
-                                          t.id ===
-                                          cellShiftsRef.current[member.id][
-                                            dayIdx
-                                          ]
-                                      )?.name
-                                    : "-"}
-                                </span>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                align="center"
-                                className="p-2 w-40"
-                              >
-                                <div className="grid grid-cols-2 gap-2">
-                                  {shiftTypes.map((type) => (
-                                    <button
-                                      key={type.id}
-                                      type="button"
-                                      className={cn(
-                                        "px-2 py-2 rounded font-bold text-xs flex items-center justify-center w-full",
-                                        type.color,
-                                        "hover:opacity-80 transition-opacity"
-                                      )}
-                                      onClick={() =>
-                                        handleSelectShiftType(type.id)
-                                      }
-                                    >
-                                      {type.name}
-                                    </button>
-                                  ))}
-                                  <button
-                                    type="button"
-                                    className="px-2 py-2 rounded text-xs w-full border text-muted-foreground hover:bg-muted"
-                                    onClick={() =>
-                                      handleSelectShiftType(null as any)
-                                    }
-                                  >
-                                    クリア
-                                  </button>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+            {/* 一括編集UI（共通） */}
+            {selectedCells.length > 0 && (
+              <div className="flex items-center gap-2 my-2">
+                <span className="text-sm text-muted-foreground">
+                  {selectedCells.length}件選択中
+                </span>
+                <Button size="sm" onClick={() => setIsBulkEditOpen(true)}>
+                  一括編集
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelectedCells([])}
+                >
+                  選択解除
+                </Button>
               </div>
-              {/* 一括編集UI（スマホでも表示） */}
-              {selectedCells.length > 0 && (
-                <div className="flex items-center gap-2 my-2">
-                  <span className="text-sm text-muted-foreground">
-                    {selectedCells.length}件選択中
-                  </span>
-                  <Button size="sm" onClick={() => setIsBulkEditOpen(true)}>
-                    一括編集
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setSelectedCells([])}
-                  >
-                    選択解除
-                  </Button>
-                </div>
-              )}
-            </div>
+            )}
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-4">
               <div className="text-sm text-muted-foreground">
                 <p>※ シフトを登録すると、スタッフのシフト表に反映されます。</p>
