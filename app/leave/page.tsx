@@ -48,9 +48,20 @@ import {
   validateLeaveRequest,
   calculateLeaveDays,
   type LeaveRequest,
+  getLeaveRequests,
+  updateLeaveRequest,
 } from "@/lib/leave";
 import AppLayout from "@/components/layout/layout";
 import { useUser } from "@/contexts/UserContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const formSchema = z.object({
   type: z.enum(["有給休暇", "特別休暇", "慶弔休暇", "その他"]),
@@ -68,6 +79,12 @@ export default function LeavePage() {
   const { toast } = useToast();
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [allRequests, setAllRequests] = useState<LeaveRequest[]>([]);
+  const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(
+    null
+  );
+  const [adminComment, setAdminComment] = useState("");
+  const [isAdminSubmitting, setIsAdminSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -80,6 +97,12 @@ export default function LeavePage() {
   useEffect(() => {
     if (!user) return;
     setRequests(getUserLeaveRequests(user.id));
+  }, [user]);
+
+  useEffect(() => {
+    if (user && user.role === "admin") {
+      setAllRequests(getLeaveRequests());
+    }
   }, [user]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -134,6 +157,41 @@ export default function LeavePage() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // 管理者用 承認/却下処理
+  const handleAdminStatusUpdate = async (
+    requestId: string,
+    newStatus: "approved" | "rejected"
+  ) => {
+    try {
+      setIsAdminSubmitting(true);
+      const updatedRequest = updateLeaveRequest(requestId, {
+        status: newStatus,
+        comment: adminComment,
+        approvedBy: user?.id,
+        approvedAt: new Date().toISOString(),
+      });
+      setAllRequests((prev) =>
+        prev.map((req) => (req.id === requestId ? updatedRequest : req))
+      );
+      setSelectedRequest(null);
+      setAdminComment("");
+      toast({
+        title: "更新完了",
+        description: `休暇申請を${
+          newStatus === "approved" ? "承認" : "却下"
+        }しました。`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "エラー",
+        description: "更新に失敗しました。",
+      });
+    } finally {
+      setIsAdminSubmitting(false);
     }
   };
 
@@ -418,6 +476,208 @@ export default function LeavePage() {
                 </div>
               </CardContent>
             </Card>
+
+            {user?.role === "admin" && (
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle>全ユーザーの休暇申請一覧（管理者用）</CardTitle>
+                  <CardDescription>
+                    全従業員の休暇申請を承認または却下できます。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="px-2 py-1">申請者ID</th>
+                          <th className="px-2 py-1">種類</th>
+                          <th className="px-2 py-1">期間</th>
+                          <th className="px-2 py-1">理由</th>
+                          <th className="px-2 py-1">申請日</th>
+                          <th className="px-2 py-1">状態</th>
+                          <th className="px-2 py-1">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allRequests.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={7}
+                              className="text-center text-muted-foreground py-4"
+                            >
+                              申請はありません
+                            </td>
+                          </tr>
+                        ) : (
+                          allRequests
+                            .sort(
+                              (a, b) =>
+                                new Date(b.createdAt).getTime() -
+                                new Date(a.createdAt).getTime()
+                            )
+                            .map((request) => (
+                              <tr key={request.id}>
+                                <td className="px-2 py-1">{request.userId}</td>
+                                <td className="px-2 py-1">{request.type}</td>
+                                <td className="px-2 py-1">
+                                  {format(
+                                    new Date(request.startDate),
+                                    "yyyy/MM/dd",
+                                    { locale: ja }
+                                  )}{" "}
+                                  〜{" "}
+                                  {format(
+                                    new Date(request.endDate),
+                                    "yyyy/MM/dd",
+                                    { locale: ja }
+                                  )}
+                                </td>
+                                <td className="px-2 py-1 max-w-[200px] truncate">
+                                  {request.reason}
+                                </td>
+                                <td className="px-2 py-1">
+                                  {format(
+                                    new Date(request.createdAt),
+                                    "yyyy/MM/dd",
+                                    { locale: ja }
+                                  )}
+                                </td>
+                                <td className="px-2 py-1">
+                                  <span
+                                    className={cn(
+                                      "rounded-full px-2 py-1 text-xs",
+                                      request.status === "approved"
+                                        ? "bg-green-100 text-green-800"
+                                        : request.status === "rejected"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-yellow-100 text-yellow-800"
+                                    )}
+                                  >
+                                    {request.status === "approved"
+                                      ? "承認済み"
+                                      : request.status === "rejected"
+                                      ? "却下"
+                                      : "承認待ち"}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-1">
+                                  {request.status === "pending" && (
+                                    <Dialog
+                                      open={selectedRequest?.id === request.id}
+                                      onOpenChange={(open) => {
+                                        if (!open) {
+                                          setSelectedRequest(null);
+                                          setAdminComment("");
+                                        }
+                                      }}
+                                    >
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            setSelectedRequest(request)
+                                          }
+                                        >
+                                          承認/却下
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent>
+                                        <DialogHeader>
+                                          <DialogTitle>
+                                            休暇申請の処理
+                                          </DialogTitle>
+                                          <DialogDescription>
+                                            申請者ID: {request.userId}{" "}
+                                            の休暇申請を処理します。
+                                          </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-2 py-2">
+                                          <div className="text-sm">
+                                            種類: {request.type}
+                                          </div>
+                                          <div className="text-sm">
+                                            期間:{" "}
+                                            {format(
+                                              new Date(request.startDate),
+                                              "yyyy/MM/dd",
+                                              { locale: ja }
+                                            )}{" "}
+                                            〜{" "}
+                                            {format(
+                                              new Date(request.endDate),
+                                              "yyyy/MM/dd",
+                                              { locale: ja }
+                                            )}
+                                          </div>
+                                          <div className="text-sm">
+                                            理由: {request.reason}
+                                          </div>
+                                          <div className="text-sm font-medium mt-2">
+                                            コメント
+                                          </div>
+                                          <Textarea
+                                            placeholder="承認/却下の理由を入力（任意）"
+                                            value={adminComment}
+                                            onChange={(e) =>
+                                              setAdminComment(e.target.value)
+                                            }
+                                          />
+                                        </div>
+                                        <DialogFooter>
+                                          <Button
+                                            variant="outline"
+                                            onClick={() => {
+                                              setSelectedRequest(null);
+                                              setAdminComment("");
+                                            }}
+                                          >
+                                            キャンセル
+                                          </Button>
+                                          <Button
+                                            variant="destructive"
+                                            onClick={() =>
+                                              handleAdminStatusUpdate(
+                                                request.id,
+                                                "rejected"
+                                              )
+                                            }
+                                            disabled={isAdminSubmitting}
+                                          >
+                                            却下
+                                          </Button>
+                                          <Button
+                                            onClick={() =>
+                                              handleAdminStatusUpdate(
+                                                request.id,
+                                                "approved"
+                                              )
+                                            }
+                                            disabled={isAdminSubmitting}
+                                          >
+                                            承認
+                                          </Button>
+                                        </DialogFooter>
+                                      </DialogContent>
+                                    </Dialog>
+                                  )}
+                                  {request.status !== "pending" &&
+                                    request.comment && (
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        {request.comment}
+                                      </div>
+                                    )}
+                                </td>
+                              </tr>
+                            ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
