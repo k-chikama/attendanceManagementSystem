@@ -451,6 +451,14 @@ export default function AdminCreateShiftPage() {
       });
     }
     try {
+      // 1. 既存のその月の全シフトを削除
+      const year = month.getFullYear();
+      const m = month.getMonth() + 1;
+      const existing = await getShiftsByMonth(year, m);
+      for (const shift of existing) {
+        await deleteShift(shift.id);
+      }
+      // 2. 新しいシフトを全件登録
       for (const shift of shiftsToSave) {
         await addShift(shift);
       }
