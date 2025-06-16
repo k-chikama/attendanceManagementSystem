@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, getCurrentUser } from "@/lib/auth";
+import { useUser } from "@/contexts/UserContext";
 import {
   getTodayAttendance,
   createAttendanceRecord,
@@ -18,39 +17,23 @@ import { Clock, Coffee, LogOut } from "lucide-react";
 import AppLayout from "@/components/layout/layout";
 
 export default function TimeClockPage() {
-  const router = useRouter();
+  const user = useUser();
   const { toast } = useToast();
-  const [user, setUser] = useState<Omit<User, "password"> | null>(null);
   const [attendance, setAttendance] = useState<AttendanceRecord | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    const loadUserAndAttendance = async () => {
-      setIsLoading(true);
-      try {
-        const currentUser = getCurrentUser();
-        if (!currentUser) {
-          router.push("/login");
-          return;
-        }
-        setUser(currentUser);
-        const todayAttendance = getTodayAttendance(currentUser.id);
-        setAttendance(todayAttendance);
-      } catch (error) {
-        console.error("データの読み込みに失敗:", error);
-        toast({
-          variant: "destructive",
-          title: "エラー",
-          description: "データの読み込みに失敗しました",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadUserAndAttendance();
-  }, [router, toast]);
+  // 勤怠データの初期取得
+  React.useEffect(() => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const todayAttendance = getTodayAttendance(user.id);
+      setAttendance(todayAttendance);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
 
   const handleClockIn = async () => {
     if (!user) {
@@ -59,7 +42,6 @@ export default function TimeClockPage() {
         title: "エラー",
         description: "ユーザー情報が見つかりません。再度ログインしてください。",
       });
-      router.push("/login");
       return;
     }
 
@@ -192,7 +174,11 @@ export default function TimeClockPage() {
     : false;
 
   if (!user) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
