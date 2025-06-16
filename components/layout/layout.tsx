@@ -2,7 +2,6 @@
 
 import { useUser } from "@/contexts/UserContext";
 import Header from "./header";
-import { MainNav } from "@/components/layout/nav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const user = useUser();
@@ -23,7 +22,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header user={user} />
-      <MainNav user={user} />
       <main className="flex-1 w-full">
         <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
           {children}
