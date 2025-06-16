@@ -175,47 +175,221 @@ export default function AdminLeaveRequestsPage() {
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>申請者</TableHead>
-                    <TableHead>種類</TableHead>
-                    <TableHead>期間</TableHead>
-                    <TableHead>理由</TableHead>
-                    <TableHead>申請日</TableHead>
-                    <TableHead>状態</TableHead>
-                    <TableHead>操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRequests
-                    .sort(
-                      (a, b) =>
-                        new Date(b.createdAt).getTime() -
-                        new Date(a.createdAt).getTime()
-                    )
-                    .map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell>{users[request.userId] || "不明"}</TableCell>
-                        <TableCell>{request.type}</TableCell>
-                        <TableCell>
-                          {format(new Date(request.startDate), "M/d", {
+              {/* PC用テーブル */}
+              <div className="overflow-x-auto w-full hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-left">申請者</TableHead>
+                      <TableHead className="text-left">種類</TableHead>
+                      <TableHead className="text-left">期間</TableHead>
+                      <TableHead className="text-left">理由</TableHead>
+                      <TableHead className="text-left">申請日</TableHead>
+                      <TableHead className="text-left">状態</TableHead>
+                      <TableHead className="text-left">操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRequests
+                      .sort(
+                        (a, b) =>
+                          new Date(b.createdAt).getTime() -
+                          new Date(a.createdAt).getTime()
+                      )
+                      .map((request) => (
+                        <TableRow key={request.id}>
+                          <TableCell className="text-left">
+                            {users[request.userId] || request.userId}
+                          </TableCell>
+                          <TableCell className="text-left">
+                            {request.type}
+                          </TableCell>
+                          <TableCell className="text-left">
+                            {format(new Date(request.startDate), "yyyy/MM/dd", {
+                              locale: ja,
+                            })}{" "}
+                            〜{" "}
+                            {format(new Date(request.endDate), "yyyy/MM/dd", {
+                              locale: ja,
+                            })}
+                          </TableCell>
+                          <TableCell className="text-left max-w-[200px] truncate">
+                            {request.reason}
+                          </TableCell>
+                          <TableCell className="text-left">
+                            {format(new Date(request.createdAt), "yyyy/MM/dd", {
+                              locale: ja,
+                            })}
+                          </TableCell>
+                          <TableCell className="text-left">
+                            <Badge
+                              variant="outline"
+                              className={
+                                request.status === "approved"
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : request.status === "rejected"
+                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                              }
+                            >
+                              {request.status === "approved"
+                                ? "承認済み"
+                                : request.status === "rejected"
+                                ? "却下"
+                                : "承認待ち"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-left">
+                            {request.status === "pending" && (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSelectedRequest(request)}
+                                  >
+                                    承認/却下
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>休暇申請の処理</DialogTitle>
+                                    <DialogDescription>
+                                      {users[request.userId] || "不明"}{" "}
+                                      からの休暇申請を処理します。
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                      <div className="text-sm font-medium">
+                                        申請内容
+                                      </div>
+                                      <div className="text-sm">
+                                        <div>種類: {request.type}</div>
+                                        <div>
+                                          期間:{" "}
+                                          {format(
+                                            new Date(request.startDate),
+                                            "M/d",
+                                            {
+                                              locale: ja,
+                                            }
+                                          )}{" "}
+                                          〜{" "}
+                                          {format(
+                                            new Date(request.endDate),
+                                            "M/d",
+                                            {
+                                              locale: ja,
+                                            }
+                                          )}
+                                        </div>
+                                        <div>理由: {request.reason}</div>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <div className="text-sm font-medium">
+                                        コメント
+                                      </div>
+                                      <Textarea
+                                        placeholder="承認/却下の理由を入力（任意）"
+                                        value={comment}
+                                        onChange={(e) =>
+                                          setComment(e.target.value)
+                                        }
+                                      />
+                                    </div>
+                                  </div>
+                                  <DialogFooter>
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedRequest(null);
+                                        setComment("");
+                                      }}
+                                    >
+                                      キャンセル
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() =>
+                                        handleStatusUpdate(
+                                          request.id,
+                                          "rejected"
+                                        )
+                                      }
+                                      disabled={isSubmitting}
+                                    >
+                                      却下
+                                    </Button>
+                                    <Button
+                                      onClick={() =>
+                                        handleStatusUpdate(
+                                          request.id,
+                                          "approved"
+                                        )
+                                      }
+                                      disabled={isSubmitting}
+                                    >
+                                      承認
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            )}
+                            {request.status !== "pending" &&
+                              request.comment && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {request.comment}
+                                </div>
+                              )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {/* モバイル用カード型表示 */}
+              <div className="block md:hidden space-y-4">
+                {filteredRequests
+                  .sort(
+                    (a, b) =>
+                      new Date(b.createdAt).getTime() -
+                      new Date(a.createdAt).getTime()
+                  )
+                  .map((request) => (
+                    <div
+                      key={request.id}
+                      className="border rounded-lg p-4 bg-white"
+                    >
+                      <div className="mb-2 font-bold text-base">
+                        {users[request.userId] || request.userId}
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-sm">
+                        <div className="text-muted-foreground">種類</div>
+                        <div className="text-left">{request.type}</div>
+                        <div className="text-muted-foreground">期間</div>
+                        <div className="text-left">
+                          {format(new Date(request.startDate), "yyyy/MM/dd", {
                             locale: ja,
                           })}{" "}
                           〜{" "}
-                          {format(new Date(request.endDate), "M/d", {
+                          {format(new Date(request.endDate), "yyyy/MM/dd", {
                             locale: ja,
                           })}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
+                        </div>
+                        <div className="text-muted-foreground">理由</div>
+                        <div className="text-left break-all">
                           {request.reason}
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(request.createdAt), "M/d", {
+                        </div>
+                        <div className="text-muted-foreground">申請日</div>
+                        <div className="text-left">
+                          {format(new Date(request.createdAt), "yyyy/MM/dd", {
                             locale: ja,
                           })}
-                        </TableCell>
-                        <TableCell>
+                        </div>
+                        <div className="text-muted-foreground">状態</div>
+                        <div className="text-left">
                           <Badge
                             variant="outline"
                             className={
@@ -232,109 +406,107 @@ export default function AdminLeaveRequestsPage() {
                               ? "却下"
                               : "承認待ち"}
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {request.status === "pending" && (
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setSelectedRequest(request)}
-                                >
-                                  承認/却下
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>休暇申請の処理</DialogTitle>
-                                  <DialogDescription>
-                                    {users[request.userId] || "不明"}{" "}
-                                    からの休暇申請を処理します。
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                  <div className="space-y-2">
-                                    <div className="text-sm font-medium">
-                                      申請内容
-                                    </div>
-                                    <div className="text-sm">
-                                      <div>種類: {request.type}</div>
-                                      <div>
-                                        期間:{" "}
-                                        {format(
-                                          new Date(request.startDate),
-                                          "M/d",
-                                          {
-                                            locale: ja,
-                                          }
-                                        )}{" "}
-                                        〜{" "}
-                                        {format(
-                                          new Date(request.endDate),
-                                          "M/d",
-                                          {
-                                            locale: ja,
-                                          }
-                                        )}
-                                      </div>
-                                      <div>理由: {request.reason}</div>
-                                    </div>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        {request.status === "pending" && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedRequest(request)}
+                              >
+                                承認/却下
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>休暇申請の処理</DialogTitle>
+                                <DialogDescription>
+                                  {users[request.userId] || "不明"}{" "}
+                                  からの休暇申請を処理します。
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                  <div className="text-sm font-medium">
+                                    申請内容
                                   </div>
-                                  <div className="space-y-2">
-                                    <div className="text-sm font-medium">
-                                      コメント
+                                  <div className="text-sm">
+                                    <div>種類: {request.type}</div>
+                                    <div>
+                                      期間:{" "}
+                                      {format(
+                                        new Date(request.startDate),
+                                        "M/d",
+                                        {
+                                          locale: ja,
+                                        }
+                                      )}{" "}
+                                      〜{" "}
+                                      {format(
+                                        new Date(request.endDate),
+                                        "M/d",
+                                        {
+                                          locale: ja,
+                                        }
+                                      )}
                                     </div>
-                                    <Textarea
-                                      placeholder="承認/却下の理由を入力（任意）"
-                                      value={comment}
-                                      onChange={(e) =>
-                                        setComment(e.target.value)
-                                      }
-                                    />
+                                    <div>理由: {request.reason}</div>
                                   </div>
                                 </div>
-                                <DialogFooter>
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                      setSelectedRequest(null);
-                                      setComment("");
-                                    }}
-                                  >
-                                    キャンセル
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    onClick={() =>
-                                      handleStatusUpdate(request.id, "rejected")
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    却下
-                                  </Button>
-                                  <Button
-                                    onClick={() =>
-                                      handleStatusUpdate(request.id, "approved")
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    承認
-                                  </Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
-                          )}
-                          {request.status !== "pending" && request.comment && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {request.comment}
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
+                                <div className="space-y-2">
+                                  <div className="text-sm font-medium">
+                                    コメント
+                                  </div>
+                                  <Textarea
+                                    placeholder="承認/却下の理由を入力（任意）"
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedRequest(null);
+                                    setComment("");
+                                  }}
+                                >
+                                  キャンセル
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={() =>
+                                    handleStatusUpdate(request.id, "rejected")
+                                  }
+                                  disabled={isSubmitting}
+                                >
+                                  却下
+                                </Button>
+                                <Button
+                                  onClick={() =>
+                                    handleStatusUpdate(request.id, "approved")
+                                  }
+                                  disabled={isSubmitting}
+                                >
+                                  承認
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                        {request.status !== "pending" && request.comment && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {request.comment}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
             </div>
           </CardContent>
         </Card>
