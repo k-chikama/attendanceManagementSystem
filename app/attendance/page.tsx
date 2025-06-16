@@ -134,36 +134,18 @@ export default function AttendancePage() {
   };
 
   // Get status badge for attendance record
-  const getStatusBadge = (status: string) => {
+  function getStatusBadge(status: string) {
     switch (status) {
-      case "present":
+      case "休み":
         return (
           <Badge
             variant="outline"
-            className="bg-green-50 text-green-700 border-green-200"
+            className="bg-purple-50 text-purple-700 border-purple-200"
           >
-            出勤
+            休み
           </Badge>
         );
-      case "late":
-        return (
-          <Badge
-            variant="outline"
-            className="bg-amber-50 text-amber-700 border-amber-200"
-          >
-            遅刻
-          </Badge>
-        );
-      case "absent":
-        return (
-          <Badge
-            variant="outline"
-            className="bg-red-50 text-red-700 border-red-200"
-          >
-            欠勤
-          </Badge>
-        );
-      case "leave":
+      case "休暇":
         return (
           <Badge
             variant="outline"
@@ -172,19 +154,44 @@ export default function AttendancePage() {
             休暇
           </Badge>
         );
-      case "holiday":
+      case "未登録":
         return (
           <Badge
             variant="outline"
-            className="bg-purple-50 text-purple-700 border-purple-200"
+            className="bg-slate-50 text-slate-700 border-slate-200"
           >
-            休日
+            未登録
+          </Badge>
+        );
+      case "勤務中":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-green-50 text-green-700 border-green-200"
+          >
+            勤務中
+          </Badge>
+        );
+      case "退勤":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-amber-50 text-amber-700 border-amber-200"
+          >
+            退勤
           </Badge>
         );
       default:
-        return null;
+        return (
+          <Badge
+            variant="outline"
+            className="bg-slate-50 text-slate-700 border-slate-200"
+          >
+            {status}
+          </Badge>
+        );
     }
-  };
+  }
 
   // Format total work time
   const formatWorkTime = (minutes: number | null) => {
@@ -387,16 +394,15 @@ export default function AttendancePage() {
               <CardTitle className="text-lg font-medium">勤怠詳細</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border overflow-hidden">
+              {/* PC表示用テーブル */}
+              <div className="hidden md:block rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>日付</TableHead>
                       <TableHead>出勤</TableHead>
                       <TableHead>退勤</TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        休憩
-                      </TableHead>
+                      <TableHead>休憩</TableHead>
                       <TableHead>勤務時間</TableHead>
                       <TableHead>状態</TableHead>
                     </TableRow>
@@ -419,7 +425,7 @@ export default function AttendancePage() {
                           </TableCell>
                           <TableCell>{record?.clockIn || "-"}</TableCell>
                           <TableCell>{record?.clockOut || "-"}</TableCell>
-                          <TableCell className="hidden md:table-cell">
+                          <TableCell>
                             {record?.breakStart ? (
                               <TooltipProvider>
                                 <Tooltip>
@@ -452,16 +458,69 @@ export default function AttendancePage() {
                               : "-"}
                           </TableCell>
                           <TableCell>
-                            <Badge>{getStatusForDate(dateStr)}</Badge>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {getShiftTypeForDate(dateStr)}
-                            </div>
+                            {getStatusBadge(getStatusForDate(dateStr))}
                           </TableCell>
                         </TableRow>
                       );
                     })}
                   </TableBody>
                 </Table>
+              </div>
+
+              {/* モバイル表示用カード */}
+              <div className="md:hidden space-y-4">
+                {daysInMonth.map((day) => {
+                  const dateStr = format(day, "yyyy-MM-dd");
+                  const record = filteredRecords.find(
+                    (r) => r.date === dateStr
+                  );
+                  const isWeekendDay = isWeekend(day);
+
+                  return (
+                    <div
+                      key={dateStr}
+                      className={`rounded-lg border p-4 ${
+                        isWeekendDay ? "bg-muted/50" : ""
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-medium">
+                          {format(day, "M/d (EEE)", { locale: ja })}
+                        </div>
+                        {getStatusBadge(getStatusForDate(dateStr))}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="space-y-1">
+                          <div className="text-muted-foreground">出勤</div>
+                          <div>{record?.clockIn || "-"}</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-muted-foreground">退勤</div>
+                          <div>{record?.clockOut || "-"}</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-muted-foreground">勤務時間</div>
+                          <div>
+                            {record?.totalWorkTime
+                              ? formatWorkTime(record.totalWorkTime)
+                              : "-"}
+                          </div>
+                        </div>
+                        {record?.breakStart && record.breakStart.length > 0 && (
+                          <div className="space-y-1">
+                            <div className="text-muted-foreground">休憩</div>
+                            <div className="text-xs">
+                              {formatBreakTimes(
+                                record.breakStart,
+                                record.breakEnd
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
