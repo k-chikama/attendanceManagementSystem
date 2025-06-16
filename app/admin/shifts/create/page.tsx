@@ -281,7 +281,6 @@ export default function AdminCreateShiftPage() {
 
   // 既存シフトをcellShiftsRefに反映
   useEffect(() => {
-    if (staff.length === 0 || existingShifts.length === 0) return;
     const obj: { [staffId: string]: (ShiftType | null)[] } = {};
     staff.forEach((member) => {
       obj[member.id] = Array(daysInMonth).fill(null);
@@ -297,7 +296,7 @@ export default function AdminCreateShiftPage() {
     });
     cellShiftsRef.current = obj;
     forceUpdate();
-  }, [staff, existingShifts, daysInMonth, daysArray]);
+  }, [month, staff, daysInMonth, existingShifts.length]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -392,7 +391,6 @@ export default function AdminCreateShiftPage() {
     const shiftTypeDef = shiftTypes.find((t) => t.id === shiftType);
     if (shiftType && shiftTypeDef) {
       if (shift) {
-        // 既存シフトがあれば編集
         await updateShift(shift.id, {
           type: shiftTypeDef.id,
           startTime: shiftTypeDef.defaultStartTime,
@@ -401,7 +399,6 @@ export default function AdminCreateShiftPage() {
         });
         toast({ title: "シフトを更新しました" });
       } else {
-        // なければ新規作成
         await addShift({
           userId: staffId,
           date: dateStr,
@@ -416,7 +413,6 @@ export default function AdminCreateShiftPage() {
       }
     }
     if (!shiftType && shift) {
-      // クリア時は削除
       await deleteShift(shift.id);
       toast({ title: "シフトを削除しました" });
     }
