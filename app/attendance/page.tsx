@@ -50,6 +50,7 @@ import { useUser } from "@/contexts/UserContext";
 import { AttendanceRecord, getUserAttendance } from "@/lib/attendance";
 import AppLayout from "@/components/layout/layout";
 import { getShiftsByUser } from "@/lib/firestoreShifts";
+import { getUserLeaveRequests } from "@/lib/leave";
 
 export default function AttendancePage() {
   const user = useUser();
@@ -59,6 +60,7 @@ export default function AttendancePage() {
     []
   );
   const [shifts, setShifts] = useState<any[]>([]);
+  const [leaves, setLeaves] = useState<any[]>([]);
 
   // Load attendance data
   useEffect(() => {
@@ -84,6 +86,11 @@ export default function AttendancePage() {
   useEffect(() => {
     if (!user) return;
     getShiftsByUser(user.id).then(setShifts);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    setLeaves(getUserLeaveRequests(user.id));
   }, [user]);
 
   if (!user) {
@@ -225,6 +232,36 @@ export default function AttendancePage() {
   function getShiftTypeForDate(date: string) {
     const shift = shifts.find((s) => s.date === date);
     return shift ? getShiftTypeLabel(shift.type) : "-";
+  }
+
+  function isLeaveDay(date: string) {
+    return leaves.some(
+      (l) => l.status === "approved" && l.startDate <= date && l.endDate >= date
+    );
+  }
+
+  function getStatusForDate(date: string) {
+    // 1. シフトが休み
+    const shift = shifts.find((s) => s.date === date);
+    if (shift && (shift.type === "dayoff" || shift.type === "休み")) {
+      return "休み";
+    }
+    // 2. 休暇申請が承認済み
+    if (isLeaveDay(date)) {
+      return "休暇";
+    }
+    // 3. 勤怠データ
+    const record = filteredRecords.find((r) => r.date === date);
+    if (!record) {
+      return "未登録";
+    }
+    if (record.clockIn && !record.clockOut) {
+      return "勤務中";
+    }
+    if (record.clockIn && record.clockOut) {
+      return "退勤";
+    }
+    return "未登録";
   }
 
   return (
@@ -415,23 +452,7 @@ export default function AttendancePage() {
                               : "-"}
                           </TableCell>
                           <TableCell>
-                            {record ? (
-                              getStatusBadge(record.status)
-                            ) : isWeekendDay ? (
-                              <Badge
-                                variant="outline"
-                                className="bg-purple-50 text-purple-700 border-purple-200"
-                              >
-                                休日
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="outline"
-                                className="bg-slate-50 text-slate-700 border-slate-200"
-                              >
-                                未登録
-                              </Badge>
-                            )}
+                            <Badge>{getStatusForDate(dateStr)}</Badge>
                             <div className="text-xs text-muted-foreground mt-1">
                               {getShiftTypeForDate(dateStr)}
                             </div>
