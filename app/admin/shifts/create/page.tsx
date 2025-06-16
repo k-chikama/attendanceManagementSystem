@@ -75,6 +75,14 @@ import { getUserProfile } from "@/lib/firestoreUsers";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useUser } from "@/contexts/UserContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // 時間軸の設定
 const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => {
@@ -213,6 +221,13 @@ export default function AdminCreateShiftPage() {
     staffId: string;
     dayIdx: number;
   } | null>(null);
+
+  // 複数セル選択用のstate
+  const [selectedCells, setSelectedCells] = useState<
+    { staffId: string; dayIdx: number }[]
+  >([]);
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+  const [bulkShiftType, setBulkShiftType] = useState<ShiftType | "">("");
 
   // 初期化
   useEffect(() => {
@@ -437,6 +452,34 @@ export default function AdminCreateShiftPage() {
     }
   };
 
+  // セル選択/解除
+  const toggleCellSelection = (staffId: string, dayIdx: number) => {
+    setSelectedCells((prev) => {
+      const exists = prev.some(
+        (c) => c.staffId === staffId && c.dayIdx === dayIdx
+      );
+      if (exists) {
+        return prev.filter(
+          (c) => !(c.staffId === staffId && c.dayIdx === dayIdx)
+        );
+      }
+      return [...prev, { staffId, dayIdx }];
+    });
+  };
+
+  // 一括編集の適用
+  const handleBulkEdit = () => {
+    if (!bulkShiftType) return;
+    selectedCells.forEach(({ staffId, dayIdx }) => {
+      if (!cellShiftsRef.current[staffId]) return;
+      cellShiftsRef.current[staffId][dayIdx] = bulkShiftType;
+    });
+    setIsBulkEditOpen(false);
+    setBulkShiftType("");
+    setSelectedCells([]);
+    forceUpdate();
+  };
+
   if (!user || role === null) {
     return null;
   }
@@ -545,12 +588,18 @@ export default function AdminCreateShiftPage() {
                             s.userId === member.id &&
                             s.date === format(date, "yyyy-MM-dd")
                         );
+                        const isSelected = selectedCells.some(
+                          (c) => c.staffId === member.id && c.dayIdx === dayIdx
+                        );
                         return (
                           <td
                             key={dayIdx}
                             className={cn(
                               "border min-w-[36px] h-12 align-middle p-0 transition-all cursor-pointer",
-                              isOpen ? "ring-2 ring-primary/60 z-20" : ""
+                              isOpen ? "ring-2 ring-primary/60 z-20" : "",
+                              isSelected
+                                ? "ring-2 ring-green-500 ring-offset-2"
+                                : ""
                             )}
                           >
                             <div className="flex flex-col items-center justify-center h-full">
@@ -563,9 +612,16 @@ export default function AdminCreateShiftPage() {
                                 <PopoverTrigger asChild>
                                   <span
                                     className="block w-full h-full flex items-center justify-center"
-                                    onClick={() =>
-                                      handleCellClick(member.id, dayIdx)
-                                    }
+                                    onClick={() => {
+                                      if (
+                                        window.event &&
+                                        (window.event as MouseEvent).shiftKey
+                                      ) {
+                                        toggleCellSelection(member.id, dayIdx);
+                                      } else {
+                                        handleCellClick(member.id, dayIdx);
+                                      }
+                                    }}
                                   >
                                     {cellShiftsRef.current[member.id] &&
                                     cellShiftsRef.current[member.id][dayIdx] ? (
@@ -715,8 +771,61 @@ export default function AdminCreateShiftPage() {
                 </Button>
               </div>
             </div>
+            {selectedCells.length > 0 && (
+              <div className="flex items-center gap-2 my-2">
+                <span className="text-sm text-muted-foreground">
+                  {selectedCells.length}件選択中
+                </span>
+                <Button size="sm" onClick={() => setIsBulkEditOpen(true)}>
+                  一括編集
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelectedCells([])}
+                >
+                  選択解除
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
+        <Dialog open={isBulkEditOpen} onOpenChange={setIsBulkEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>シフト一括編集</DialogTitle>
+              <DialogDescription>
+                選択した{selectedCells.length}
+                件のセルにシフト種別を一括で割り当てます。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Select value={bulkShiftType} onValueChange={setBulkShiftType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="シフト種別を選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {shiftTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsBulkEditOpen(false)}
+              >
+                キャンセル
+              </Button>
+              <Button onClick={handleBulkEdit} disabled={!bulkShiftType}>
+                適用
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
