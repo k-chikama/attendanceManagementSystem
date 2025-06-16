@@ -80,8 +80,10 @@ export default function AdminLeaveRequestsPage() {
 
   useEffect(() => {
     // 休暇申請一覧を取得
-    const requests = getLeaveRequests();
-    setLeaveRequests(requests);
+    (async () => {
+      const requests = await getLeaveRequests();
+      setLeaveRequests(requests);
+    })();
 
     // ユーザー情報を取得
     const fetchUsers = async () => {
@@ -110,10 +112,10 @@ export default function AdminLeaveRequestsPage() {
   ) => {
     try {
       setIsSubmitting(true);
-      const updatedRequest = updateLeaveRequest(requestId, {
+      const updatedRequest = await updateLeaveRequest(requestId, {
         status: newStatus,
         comment: comment,
-        approvedBy: user.id,
+        approvedBy: user?.id,
         approvedAt: new Date().toISOString(),
       });
 

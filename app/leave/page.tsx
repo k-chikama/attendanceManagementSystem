@@ -45,11 +45,12 @@ import { getCurrentUser, getAllUsers } from "@/lib/auth";
 import {
   createLeaveRequest,
   getUserLeaveRequests,
+  getLeaveRequests,
+  updateLeaveRequest,
+  deleteLeaveRequest,
   validateLeaveRequest,
   calculateLeaveDays,
   type LeaveRequest,
-  getLeaveRequests,
-  updateLeaveRequest,
 } from "@/lib/leave";
 import AppLayout from "@/components/layout/layout";
 import { useUser } from "@/contexts/UserContext";
@@ -71,7 +72,7 @@ const formSchema = z.object({
   endDate: z.date({
     required_error: "終了日を選択してください",
   }),
-  reason: z.string().min(1, "申請理由を入力してください"),
+  reason: z.string().optional(),
 });
 
 export default function LeavePage() {
@@ -97,40 +98,37 @@ export default function LeavePage() {
 
   useEffect(() => {
     if (!user) return;
-    setRequests(getUserLeaveRequests(user.id));
+    (async () => {
+      const reqs = await getUserLeaveRequests(user.id);
+      setRequests(reqs);
+    })();
   }, [user]);
 
   useEffect(() => {
     if (user && user.role === "admin") {
-      setAllRequests(getLeaveRequests());
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user && user.role === "admin") {
-      const users = getAllUsers();
-      const map: { [key: string]: string } = {};
-      users.forEach((u) => {
-        map[u.id] = u.name;
-      });
-      setUserMap(map);
+      (async () => {
+        const all = await getLeaveRequests();
+        setAllRequests(all);
+        const users = getAllUsers();
+        const map: { [key: string]: string } = {};
+        users.forEach((u) => {
+          map[u.id] = u.name;
+        });
+        setUserMap(map);
+      })();
     }
   }, [user]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) return;
-
     try {
       setIsSubmitting(true);
-
-      // バリデーション
       const validationError = validateLeaveRequest({
         startDate: values.startDate.toISOString(),
         endDate: values.endDate.toISOString(),
         type: values.type,
-        reason: values.reason,
+        reason: values.reason ?? "",
       });
-
       if (validationError) {
         toast({
           variant: "destructive",
@@ -139,25 +137,19 @@ export default function LeavePage() {
         });
         return;
       }
-
-      // 休暇申請を作成
-      const newRequest = createLeaveRequest({
+      // Firestoreに申請
+      const newRequest = await createLeaveRequest({
         userId: user.id,
         type: values.type,
         startDate: values.startDate.toISOString(),
         endDate: values.endDate.toISOString(),
-        reason: values.reason,
+        reason: values.reason ?? "",
       });
-
-      // 申請一覧を更新
       setRequests((prev) => [...prev, newRequest]);
-
       toast({
         title: "申請が完了しました",
         description: "休暇申請が正常に送信されました。",
       });
-
-      // フォームをリセット
       form.reset();
     } catch (error) {
       console.error("申請エラー:", error);
@@ -179,7 +171,7 @@ export default function LeavePage() {
   ) => {
     try {
       setIsAdminSubmitting(true);
-      const updatedRequest = updateLeaveRequest(requestId, {
+      const updatedRequest = await updateLeaveRequest(requestId, {
         status: newStatus,
         comment: adminComment,
         approvedBy: user?.id,

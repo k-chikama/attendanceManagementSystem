@@ -1,3 +1,19 @@
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  setDoc,
+  query,
+  where,
+  Timestamp,
+  serverTimestamp,
+} from "firebase/firestore";
+
 // 休暇申請の型定義
 export interface LeaveRequest {
   id: string;
@@ -14,112 +30,70 @@ export interface LeaveRequest {
   comment?: string;
 }
 
-// ローカルストレージのキー
-const LEAVE_REQUESTS_KEY = "leave_requests";
+const LEAVES_COLLECTION = "leaves";
 
 // 休暇申請一覧を取得
-export function getLeaveRequests(): LeaveRequest[] {
-  if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem(LEAVE_REQUESTS_KEY);
-  return stored ? JSON.parse(stored) : [];
+export async function getLeaveRequests(): Promise<LeaveRequest[]> {
+  const snapshot = await getDocs(collection(db, LEAVES_COLLECTION));
+  return snapshot.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() } as LeaveRequest)
+  );
 }
 
 // ユーザーの休暇申請一覧を取得
-export function getUserLeaveRequests(userId: string): LeaveRequest[] {
-  const requests = getLeaveRequests();
-  return requests.filter((request) => request.userId === userId);
+export async function getUserLeaveRequests(
+  userId: string
+): Promise<LeaveRequest[]> {
+  const q = query(
+    collection(db, LEAVES_COLLECTION),
+    where("userId", "==", userId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() } as LeaveRequest)
+  );
 }
 
 // 休暇申請を作成
-export function createLeaveRequest(data: {
+export async function createLeaveRequest(data: {
   userId: string;
   type: LeaveRequest["type"];
   startDate: string;
   endDate: string;
   reason: string;
-}): LeaveRequest {
-  const requests = getLeaveRequests();
-
-  // 日付の重複チェック
-  const hasOverlap = requests.some(
-    (request) =>
-      request.userId === data.userId &&
-      request.status !== "rejected" &&
-      ((data.startDate <= request.endDate &&
-        data.endDate >= request.startDate) ||
-        (data.startDate >= request.startDate &&
-          data.startDate <= request.endDate) ||
-        (data.endDate >= request.startDate && data.endDate <= request.endDate))
-  );
-
-  if (hasOverlap) {
-    throw new Error("指定された期間に既に休暇申請が存在します");
-  }
-
-  const newRequest: LeaveRequest = {
-    id: Math.random().toString(36).substr(2, 9),
+}): Promise<LeaveRequest> {
+  const now = new Date().toISOString();
+  const docRef = await addDoc(collection(db, LEAVES_COLLECTION), {
     ...data,
     status: "pending",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  requests.push(newRequest);
-  localStorage.setItem(LEAVE_REQUESTS_KEY, JSON.stringify(requests));
-
-  return newRequest;
+    createdAt: now,
+    updatedAt: now,
+  });
+  const docSnap = await getDoc(docRef);
+  return { id: docRef.id, ...docSnap.data() } as LeaveRequest;
 }
 
 // 休暇申請を更新
-export function updateLeaveRequest(
+export async function updateLeaveRequest(
   requestId: string,
   updates: Partial<LeaveRequest>
-): LeaveRequest {
-  const requests = getLeaveRequests();
-  const index = requests.findIndex((request) => request.id === requestId);
-
-  if (index === -1) {
-    throw new Error("休暇申請が見つかりません");
-  }
-
-  // 承認状態の変更がある場合
-  if (updates.status && updates.status !== requests[index].status) {
-    if (updates.status === "approved" || updates.status === "rejected") {
-      updates.approvedAt = new Date().toISOString();
-      // 実際の実装では、承認者のIDを設定
-      updates.approvedBy = "admin";
-    }
-  }
-
-  const updatedRequest: LeaveRequest = {
-    ...requests[index],
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  };
-
-  requests[index] = updatedRequest;
-  localStorage.setItem(LEAVE_REQUESTS_KEY, JSON.stringify(requests));
-
-  return updatedRequest;
+): Promise<LeaveRequest> {
+  const ref = doc(db, LEAVES_COLLECTION, requestId);
+  const now = new Date().toISOString();
+  await updateDoc(ref, { ...updates, updatedAt: now });
+  const docSnap = await getDoc(ref);
+  return { id: requestId, ...docSnap.data() } as LeaveRequest;
 }
 
 // 休暇申請を削除
-export function deleteLeaveRequest(requestId: string): void {
-  const requests = getLeaveRequests();
-  const filteredRequests = requests.filter(
-    (request) => request.id !== requestId
-  );
-
-  if (filteredRequests.length === requests.length) {
-    throw new Error("休暇申請が見つかりません");
-  }
-
-  localStorage.setItem(LEAVE_REQUESTS_KEY, JSON.stringify(filteredRequests));
+export async function deleteLeaveRequest(requestId: string): Promise<void> {
+  const ref = doc(db, LEAVES_COLLECTION, requestId);
+  await deleteDoc(ref);
 }
 
 // 休暇申請の統計情報を取得
-export function getLeaveRequestStats(userId: string) {
-  const requests = getUserLeaveRequests(userId);
+export async function getLeaveRequestStats(userId: string) {
+  const requests = await getUserLeaveRequests(userId);
   const currentYear = new Date().getFullYear();
 
   const stats = {
@@ -208,9 +182,9 @@ export function validateLeaveRequest(data: {
   }
 
   // 理由の空チェックのみ
-  if (!data.reason) {
-    return "申請理由を入力してください";
-  }
+  // if (!data.reason) {
+  //   return "申請理由を入力してください";
+  // }
 
   return null;
 }

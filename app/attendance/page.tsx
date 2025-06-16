@@ -90,7 +90,10 @@ export default function AttendancePage() {
 
   useEffect(() => {
     if (!user) return;
-    setLeaves(getUserLeaveRequests(user.id));
+    (async () => {
+      const leaves = await getUserLeaveRequests(user.id);
+      setLeaves(leaves);
+    })();
   }, [user]);
 
   if (!user) {

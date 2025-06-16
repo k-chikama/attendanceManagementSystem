@@ -26,9 +26,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    setAttendanceData(getUserAttendance(user.id));
-    setLeaveRequests(getUserLeaveRequests(user.id));
-    setTodayRecord(getTodayAttendance(user.id));
+    (async () => {
+      const attendance = await getUserAttendance(user.id);
+      setAttendanceData(attendance);
+      const leaves = await getUserLeaveRequests(user.id);
+      setLeaveRequests(leaves);
+      const today = await getTodayAttendance(user.id);
+      setTodayRecord(today);
+    })();
   }, [user]);
 
   if (!user) {
