@@ -83,7 +83,7 @@ export default function AttendancePage() {
 
   useEffect(() => {
     if (!user) return;
-    getShiftsByUser(user.uid).then(setShifts);
+    getShiftsByUser(user.id).then(setShifts);
   }, [user]);
 
   if (!user) {
