@@ -90,7 +90,7 @@ export default function AdminLeaveRequestsPage() {
       const usersSnapshot = await getDocs(collection(db, "users"));
       const userMap = usersSnapshot.docs.reduce((acc, doc) => {
         const userData = doc.data() as User;
-        acc[userData.id] = userData.name;
+        acc[doc.id] = userData.name;
         return acc;
       }, {} as { [key: string]: string });
       setUsers(userMap);
@@ -180,7 +180,7 @@ export default function AdminLeaveRequestsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-left">申請者</TableHead>
+                      <TableHead className="text-left">申請者名</TableHead>
                       <TableHead className="text-left">種類</TableHead>
                       <TableHead className="text-left">期間</TableHead>
                       <TableHead className="text-left">理由</TableHead>
@@ -362,7 +362,7 @@ export default function AdminLeaveRequestsPage() {
                       key={request.id}
                       className="border rounded-lg p-4 bg-white"
                     >
-                      <div className="mb-2 font-bold text-base">
+                      <div className="mb-2 font-bold text-base text-left">
                         {users[request.userId] || "不明"}
                       </div>
                       <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-sm">
