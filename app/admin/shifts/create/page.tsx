@@ -569,7 +569,8 @@ export default function AdminCreateShiftPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* PC用テーブル */}
+            <div className="overflow-x-auto hidden md:block">
               <table className="min-w-[1200px] border text-center">
                 <thead>
                   <tr>
@@ -722,6 +723,142 @@ export default function AdminCreateShiftPage() {
                 </tbody>
               </table>
             </div>
+            {/* スマホ用：日付縦軸・スタッフ横軸リスト */}
+            <div className="block md:hidden">
+              <div className="space-y-6">
+                {daysArray.map((date, dayIdx) => (
+                  <div key={dayIdx} className="border rounded-lg bg-white">
+                    <div className="px-4 py-2 bg-muted font-bold flex items-center gap-2">
+                      <span className="text-base">
+                        {format(date, "M/d (E)", { locale: ja })}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 p-2">
+                      {staff.map((member) => {
+                        const isOpen =
+                          popover?.staffId === member.id &&
+                          popover?.dayIdx === dayIdx;
+                        const isSelected = selectedCells.some(
+                          (c) => c.staffId === member.id && c.dayIdx === dayIdx
+                        );
+                        return (
+                          <div
+                            key={member.id}
+                            className="flex items-center gap-2"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm truncate">
+                                {member.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {member.department} / {member.position}
+                              </div>
+                            </div>
+                            <Popover
+                              open={isOpen}
+                              onOpenChange={(open) => !open && setPopover(null)}
+                            >
+                              <PopoverTrigger asChild>
+                                <span
+                                  className={cn(
+                                    "inline-block w-16 h-8 rounded font-bold text-xs flex items-center justify-center cursor-pointer border",
+                                    cellShiftsRef.current[member.id] &&
+                                      cellShiftsRef.current[member.id][dayIdx]
+                                      ? shiftTypes.find(
+                                          (t) =>
+                                            t.id ===
+                                            cellShiftsRef.current[member.id][
+                                              dayIdx
+                                            ]
+                                        )?.color
+                                      : "bg-muted text-muted-foreground",
+                                    isOpen ? "ring-2 ring-primary/60 z-20" : "",
+                                    isSelected
+                                      ? "ring-2 ring-green-500 ring-offset-2"
+                                      : ""
+                                  )}
+                                  onClick={() => {
+                                    if (
+                                      window.event &&
+                                      (window.event as MouseEvent).shiftKey
+                                    ) {
+                                      toggleCellSelection(member.id, dayIdx);
+                                    } else {
+                                      handleCellClick(member.id, dayIdx);
+                                    }
+                                  }}
+                                >
+                                  {cellShiftsRef.current[member.id] &&
+                                  cellShiftsRef.current[member.id][dayIdx]
+                                    ? shiftTypes.find(
+                                        (t) =>
+                                          t.id ===
+                                          cellShiftsRef.current[member.id][
+                                            dayIdx
+                                          ]
+                                      )?.name
+                                    : "-"}
+                                </span>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align="center"
+                                className="p-2 w-40"
+                              >
+                                <div className="grid grid-cols-2 gap-2">
+                                  {shiftTypes.map((type) => (
+                                    <button
+                                      key={type.id}
+                                      type="button"
+                                      className={cn(
+                                        "px-2 py-2 rounded font-bold text-xs flex items-center justify-center w-full",
+                                        type.color,
+                                        "hover:opacity-80 transition-opacity"
+                                      )}
+                                      onClick={() =>
+                                        handleSelectShiftType(type.id)
+                                      }
+                                    >
+                                      {type.name}
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    className="px-2 py-2 rounded text-xs w-full border text-muted-foreground hover:bg-muted"
+                                    onClick={() =>
+                                      handleSelectShiftType(null as any)
+                                    }
+                                  >
+                                    クリア
+                                  </button>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* 一括編集UI（スマホでも表示） */}
+              {selectedCells.length > 0 && (
+                <div className="flex items-center gap-2 my-2">
+                  <span className="text-sm text-muted-foreground">
+                    {selectedCells.length}件選択中
+                  </span>
+                  <Button size="sm" onClick={() => setIsBulkEditOpen(true)}>
+                    一括編集
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedCells([])}
+                  >
+                    選択解除
+                  </Button>
+                </div>
+              )}
+            </div>
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-4">
               <div className="text-sm text-muted-foreground">
                 <p>※ シフトを登録すると、スタッフのシフト表に反映されます。</p>
@@ -772,23 +909,6 @@ export default function AdminCreateShiftPage() {
                 </Button>
               </div>
             </div>
-            {selectedCells.length > 0 && (
-              <div className="flex items-center gap-2 my-2">
-                <span className="text-sm text-muted-foreground">
-                  {selectedCells.length}件選択中
-                </span>
-                <Button size="sm" onClick={() => setIsBulkEditOpen(true)}>
-                  一括編集
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setSelectedCells([])}
-                >
-                  選択解除
-                </Button>
-              </div>
-            )}
           </CardContent>
         </Card>
         <Dialog open={isBulkEditOpen} onOpenChange={setIsBulkEditOpen}>
