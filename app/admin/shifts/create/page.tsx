@@ -630,19 +630,18 @@ export default function AdminCreateShiftPage() {
                             <div className="flex flex-col items-center justify-center h-full">
                               <Popover
                                 open={isOpen}
-                                onOpenChange={(open) =>
-                                  !open && setPopover(null)
-                                }
+                                onOpenChange={(open) => {
+                                  if (!open) setPopover(null);
+                                }}
                               >
                                 <PopoverTrigger asChild>
-                                  <span
+                                  <button
+                                    type="button"
+                                    tabIndex={0}
                                     className="block w-full h-full flex items-center justify-center"
-                                    onClick={() => {
-                                      if (multiSelectMode) {
-                                        toggleCellSelection(member.id, dayIdx);
-                                      } else {
-                                        handleCellClick(member.id, dayIdx);
-                                      }
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      handleCellClick(member.id, dayIdx);
                                     }}
                                   >
                                     {cellShiftsRef.current[member.id] &&
@@ -674,40 +673,40 @@ export default function AdminCreateShiftPage() {
                                         -
                                       </span>
                                     )}
-                                  </span>
+                                  </button>
                                 </PopoverTrigger>
-                                <PopoverContent
-                                  align="center"
-                                  className="p-2 w-40"
-                                >
-                                  <div className="grid grid-cols-2 gap-2">
-                                    {shiftTypes.map((type) => (
+                                <Popover.Portal>
+                                  <PopoverContent
+                                    align="center"
+                                    side="top"
+                                    sideOffset={4}
+                                    style={{ zIndex: 99999 }}
+                                  >
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {shiftTypes.map((type) => (
+                                        <button
+                                          key={type.id}
+                                          type="button"
+                                          onClick={() => {
+                                            handleSelectShiftType(type.id);
+                                            setPopover(null);
+                                          }}
+                                        >
+                                          {type.name}
+                                        </button>
+                                      ))}
                                       <button
-                                        key={type.id}
                                         type="button"
-                                        className={cn(
-                                          "px-2 py-2 rounded font-bold text-xs flex items-center justify-center w-full",
-                                          type.color,
-                                          "hover:opacity-80 transition-opacity"
-                                        )}
-                                        onClick={() =>
-                                          handleSelectShiftType(type.id)
-                                        }
+                                        onClick={() => {
+                                          handleSelectShiftType(null);
+                                          setPopover(null);
+                                        }}
                                       >
-                                        {type.name}
+                                        クリア
                                       </button>
-                                    ))}
-                                    <button
-                                      type="button"
-                                      className="px-2 py-2 rounded text-xs w-full border text-muted-foreground hover:bg-muted"
-                                      onClick={() =>
-                                        handleSelectShiftType(null as any)
-                                      }
-                                    >
-                                      クリア
-                                    </button>
-                                  </div>
-                                </PopoverContent>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover.Portal>
                               </Popover>
                             </div>
                           </td>
@@ -775,22 +774,18 @@ export default function AdminCreateShiftPage() {
                               <div className="flex flex-col items-center justify-center h-full">
                                 <Popover
                                   open={isOpen}
-                                  onOpenChange={(open) =>
-                                    !open && setPopover(null)
-                                  }
+                                  onOpenChange={(open) => {
+                                    if (!open) setPopover(null);
+                                  }}
                                 >
                                   <PopoverTrigger asChild>
-                                    <span
+                                    <button
+                                      type="button"
+                                      tabIndex={0}
                                       className="block w-full h-full flex items-center justify-center"
-                                      onClick={() => {
-                                        if (multiSelectMode) {
-                                          toggleCellSelection(
-                                            member.id,
-                                            dayIdx
-                                          );
-                                        } else {
-                                          handleCellClick(member.id, dayIdx);
-                                        }
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        handleCellClick(member.id, dayIdx);
                                       }}
                                     >
                                       {cellShiftsRef.current[member.id] &&
@@ -824,40 +819,40 @@ export default function AdminCreateShiftPage() {
                                           -
                                         </span>
                                       )}
-                                    </span>
+                                    </button>
                                   </PopoverTrigger>
-                                  <PopoverContent
-                                    align="center"
-                                    className="p-2 w-40"
-                                  >
-                                    <div className="grid grid-cols-2 gap-2">
-                                      {shiftTypes.map((type) => (
+                                  <Popover.Portal>
+                                    <PopoverContent
+                                      align="center"
+                                      side="top"
+                                      sideOffset={4}
+                                      style={{ zIndex: 99999 }}
+                                    >
+                                      <div className="grid grid-cols-2 gap-2">
+                                        {shiftTypes.map((type) => (
+                                          <button
+                                            key={type.id}
+                                            type="button"
+                                            onClick={() => {
+                                              handleSelectShiftType(type.id);
+                                              setPopover(null);
+                                            }}
+                                          >
+                                            {type.name}
+                                          </button>
+                                        ))}
                                         <button
-                                          key={type.id}
                                           type="button"
-                                          className={cn(
-                                            "px-2 py-2 rounded font-bold text-xs flex items-center justify-center w-full",
-                                            type.color,
-                                            "hover:opacity-80 transition-opacity"
-                                          )}
-                                          onClick={() =>
-                                            handleSelectShiftType(type.id)
-                                          }
+                                          onClick={() => {
+                                            handleSelectShiftType(null);
+                                            setPopover(null);
+                                          }}
                                         >
-                                          {type.name}
+                                          クリア
                                         </button>
-                                      ))}
-                                      <button
-                                        type="button"
-                                        className="px-2 py-2 rounded text-xs w-full border text-muted-foreground hover:bg-muted"
-                                        onClick={() =>
-                                          handleSelectShiftType(null as any)
-                                        }
-                                      >
-                                        クリア
-                                      </button>
-                                    </div>
-                                  </PopoverContent>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover.Portal>
                                 </Popover>
                               </div>
                             </td>
