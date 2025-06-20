@@ -747,7 +747,7 @@ export default function AdminCreateShiftPage() {
           );
 
           if (isSpecial) {
-            // 土日祝日・8のつく日は6人以上確保
+            // 土日祝日・8のつく日は6人以上確保（全員出勤でもOK）
             if (workingStaff.length < 6) {
               const neededStaff = 6 - workingStaff.length;
               const staffWithDayOff = staffIds.filter(
@@ -792,30 +792,27 @@ export default function AdminCreateShiftPage() {
               }
             }
           } else {
-            // 平日は4人固定
+            // 平日は4人固定（厳格に）
             if (workingStaff.length !== 4) {
               if (workingStaff.length > 4) {
-                // 4人を超えている場合、余分なスタッフを土日祝日・8のつく日で6人未満の日へ移動
+                // 4人を超えている場合、余分なスタッフを土日祝日・8のつく日へ強制移動
                 const excessStaff = workingStaff.length - 4;
                 const staffToMove = workingStaff.slice(0, excessStaff);
 
                 for (const staffId of staffToMove) {
                   let moved = false;
 
-                  // 土日祝日・8のつく日で6人未満の日を探す
+                  // 土日祝日・8のつく日で6人未満の日を探す（全員出勤でもOK）
                   for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
-                    if (
-                      otherDay !== dayIdx &&
-                      newCellShifts[staffId][otherDay] === "dayoff"
-                    ) {
+                    if (otherDay !== dayIdx) {
                       const otherDate = addDays(month, otherDay);
                       const otherIsSpecial = isSpecialDay(otherDate);
-                      const otherWorkingStaff = staffIds.filter(
-                        (id) => newCellShifts[id][otherDay] !== "dayoff"
-                      );
 
-                      // 土日祝日・8のつく日で6人未満の場合は移動可能
-                      if (otherIsSpecial && otherWorkingStaff.length < 6) {
+                      // 土日祝日・8のつく日なら移動可能（6人未満でもOK）
+                      if (
+                        otherIsSpecial &&
+                        newCellShifts[staffId][otherDay] === "dayoff"
+                      ) {
                         // 移動実行
                         newCellShifts[staffId][dayIdx] = "dayoff";
                         newCellShifts[staffId][otherDay] = "early";
@@ -826,7 +823,22 @@ export default function AdminCreateShiftPage() {
                     }
                   }
 
-                  if (moved) break;
+                  // 適切な日が見つからない場合は、最初の土日祝日・8のつく日に強制移動
+                  if (!moved) {
+                    for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
+                      if (otherDay !== dayIdx) {
+                        const otherDate = addDays(month, otherDay);
+                        const otherIsSpecial = isSpecialDay(otherDate);
+
+                        if (otherIsSpecial) {
+                          newCellShifts[staffId][dayIdx] = "dayoff";
+                          newCellShifts[staffId][otherDay] = "early";
+                          adjustmentsMade = true;
+                          break;
+                        }
+                      }
+                    }
+                  }
                 }
               } else if (workingStaff.length < 4) {
                 // 4人未満の場合、土日祝日・8のつく日で6人を超えているスタッフから移動
