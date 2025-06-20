@@ -865,8 +865,6 @@ export default function AdminCreateShiftPage() {
                       }
                     }
                   }
-
-                  if (moved) break;
                 }
               }
             }
