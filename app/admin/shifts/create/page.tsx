@@ -403,72 +403,77 @@ const reduceConsecutiveWorkDays = (
   month: Date,
   daysInMonth: number
 ): boolean => {
-  let adjustmentsMade = false;
-
   for (const staffId of staffIds) {
-    const staffShifts = shifts[staffId];
-    if (!staffShifts) continue;
-
-    // 各日について連続勤務日数をチェック
     for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+      // 5連勤以上の一部であるかチェック
       if (
-        staffShifts[dayIdx] &&
-        staffShifts[dayIdx] !== "dayoff" &&
-        staffShifts[dayIdx] !== "al"
+        shifts[staffId][dayIdx] &&
+        shifts[staffId][dayIdx] !== "dayoff" &&
+        shifts[staffId][dayIdx] !== "al" &&
+        !checkConsecutiveWorkDays(shifts, staffId, dayIdx, 4)
       ) {
-        if (!checkConsecutiveWorkDays(shifts, staffId, dayIdx, 4)) {
-          // 5連勤以上になっている場合、スワップ可能な日を探す
-          const currentDate = addDays(month, dayIdx);
-          const isSpecial = isSpecialDay(currentDate);
+        // 5連勤以上を発見。この勤務日を本人の休みとスワップできないか試す
+        const originalShiftType = shifts[staffId][dayIdx]; // 'early' or 'late'
 
-          // 他のスタッフで休みの日を探してスワップ
-          for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
-            if (otherDay === dayIdx) continue;
+        // スワップ先となる本人の休みの日を探す
+        for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
+          if (shifts[staffId][otherDay] === "dayoff") {
+            // 休みの日を発見。この日とスワップ可能か制約をチェックする
+            const sourceDay = dayIdx;
+            const targetDay = otherDay;
 
-            const otherDate = addDays(month, otherDay);
-            const otherIsSpecial = isSpecialDay(otherDate);
+            const sourceDate = addDays(month, sourceDay);
+            const targetDate = addDays(month, targetDay);
 
-            // 同じ種類の日（平日同士、特別日同士）でスワップ
-            if (isSpecial === otherIsSpecial) {
-              // 他のスタッフでその日が休みのスタッフを探す
-              for (const otherStaffId of staffIds) {
-                if (otherStaffId === staffId) continue;
+            const isSourceSpecial = isSpecialDay(sourceDate);
+            const isTargetSpecial = isSpecialDay(targetDate);
 
-                const otherStaffShifts = shifts[otherStaffId];
-                if (!otherStaffShifts) continue;
+            const sourceStaffCount = staffIds.filter(
+              (id) => shifts[id][sourceDay] !== "dayoff"
+            ).length;
+            const targetStaffCount = staffIds.filter(
+              (id) => shifts[id][targetDay] !== "dayoff"
+            ).length;
 
-                // 他のスタッフがその日休みで、元のスタッフが他の日休みの場合
-                if (
-                  otherStaffShifts[otherDay] === "dayoff" &&
-                  staffShifts[otherDay] !== "dayoff"
-                ) {
-                  // スワップ実行
-                  const tempShift = shifts[staffId][dayIdx];
-                  shifts[staffId][dayIdx] = shifts[staffId][otherDay];
-                  shifts[staffId][otherDay] = tempShift;
+            // スワップ後の人数を計算
+            const newSourceStaffCount = sourceStaffCount - 1;
+            const newTargetStaffCount = targetStaffCount + 1;
 
-                  const tempOtherShift = shifts[otherStaffId][otherDay];
-                  shifts[otherStaffId][otherDay] = shifts[otherStaffId][dayIdx];
-                  shifts[otherStaffId][dayIdx] = tempOtherShift;
+            // スワップがルールを破らないかチェック
+            let isSwapValid = true;
 
-                  adjustmentsMade = true;
-                  break;
-                }
-              }
+            // 勤務日(source)を休みにした場合のチェック
+            if (isSourceSpecial) {
+              if (newSourceStaffCount < 6) isSwapValid = false;
+            } else {
+              // 平日
+              if (newSourceStaffCount < 4) isSwapValid = false;
+            }
 
-              if (adjustmentsMade) break;
+            // 休み(target)を勤務日にした場合のチェック
+            if (isTargetSpecial) {
+              // 特別日は上限なしなので常にOK
+            } else {
+              // 平日
+              if (newTargetStaffCount > 5) isSwapValid = false;
+            }
+
+            if (isSwapValid) {
+              // 安全なスワップを実行
+              shifts[staffId][sourceDay] = "dayoff";
+              shifts[staffId][targetDay] = originalShiftType;
+
+              // 調整したのでtrueを返して、再度全体をチェックさせる
+              return true;
             }
           }
-
-          if (adjustmentsMade) break;
         }
       }
     }
-
-    if (adjustmentsMade) break;
   }
 
-  return adjustmentsMade;
+  // 全てのスキャンで調整が行われなかった場合
+  return false;
 };
 
 export default function AdminCreateShiftPage() {
