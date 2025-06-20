@@ -1054,6 +1054,10 @@ export default function AdminCreateShiftPage() {
             </div>
             <CardDescription>
               セルをクリックしてシフト種別を選択し、登録ボタンで保存してください。
+              <br />
+              <span className="text-yellow-800 bg-yellow-100 px-2 py-1 rounded text-xs">
+                黄色の日付は土日祝日・8のつく日（6人以上確保）
+              </span>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1065,14 +1069,27 @@ export default function AdminCreateShiftPage() {
                     <th className="w-40 bg-background sticky left-0 z-10">
                       スタッフ
                     </th>
-                    {daysArray.map((date, i) => (
-                      <th
-                        key={i}
-                        className="border bg-muted text-xs font-normal px-1 py-2"
-                      >
-                        {getDate(date)}
-                      </th>
-                    ))}
+                    {daysArray.map((date, i) => {
+                      const isSpecial = isSpecialDay(date);
+                      return (
+                        <th
+                          key={i}
+                          className={cn(
+                            "border text-xs font-normal px-1 py-2",
+                            isSpecial
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-muted"
+                          )}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-bold">{getDate(date)}</span>
+                            <span className="text-[10px]">
+                              {format(date, "E", { locale: ja })}
+                            </span>
+                          </div>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -1141,27 +1158,42 @@ export default function AdminCreateShiftPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {daysArray.map((date, dayIdx) => (
-                      <tr key={dayIdx} className="h-14">
-                        <td className="bg-gray-50 sticky left-0 z-10 border-r min-w-[80px] text-left px-2 font-bold text-xs">
-                          <span>{format(date, "M/d (E)", { locale: ja })}</span>
-                        </td>
-                        {staff.map((member) => (
-                          <ShiftCell
-                            key={member.id}
-                            member={member}
-                            dayIdx={dayIdx}
-                            selectedCells={selectedCells}
-                            cellShiftsRef={cellShiftsRef}
-                            handleSelectShiftType={handleSelectShiftType}
-                            getShiftTypeInfo={getShiftTypeInfo}
-                            multiSelectMode={multiSelectMode}
-                            toggleCellSelection={toggleCellSelection}
-                            isMobile
-                          />
-                        ))}
-                      </tr>
-                    ))}
+                    {daysArray.map((date, dayIdx) => {
+                      const isSpecial = isSpecialDay(date);
+                      return (
+                        <tr key={dayIdx} className="h-14">
+                          <td
+                            className={cn(
+                              "sticky left-0 z-10 border-r min-w-[80px] text-left px-2 font-bold text-xs",
+                              isSpecial
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-50"
+                            )}
+                          >
+                            <div className="flex flex-col">
+                              <span>{format(date, "M/d", { locale: ja })}</span>
+                              <span className="text-[10px]">
+                                {format(date, "E", { locale: ja })}
+                              </span>
+                            </div>
+                          </td>
+                          {staff.map((member) => (
+                            <ShiftCell
+                              key={member.id}
+                              member={member}
+                              dayIdx={dayIdx}
+                              selectedCells={selectedCells}
+                              cellShiftsRef={cellShiftsRef}
+                              handleSelectShiftType={handleSelectShiftType}
+                              getShiftTypeInfo={getShiftTypeInfo}
+                              multiSelectMode={multiSelectMode}
+                              toggleCellSelection={toggleCellSelection}
+                              isMobile
+                            />
+                          ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
