@@ -1030,7 +1030,7 @@ export default function AdminCreateShiftPage() {
 
       // Phase 5: 連続勤務日数の最終調整（5連勤以上を防ぐ）
       let consecutiveAdjustmentsMade = true;
-      let consecutiveMaxIterations = 10; // 試行回数を増やす
+      let consecutiveMaxIterations = 30; // 試行回数を増やす
 
       while (consecutiveAdjustmentsMade && consecutiveMaxIterations > 0) {
         consecutiveAdjustmentsMade = reduceConsecutiveWorkDays(
