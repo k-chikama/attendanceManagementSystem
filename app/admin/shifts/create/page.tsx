@@ -200,6 +200,8 @@ const ShiftCell = ({
   cellShiftsRef,
   handleSelectShiftType,
   getShiftTypeInfo,
+  multiSelectMode,
+  toggleCellSelection,
   isMobile = false,
 }: {
   member: SafeUser;
@@ -214,6 +216,8 @@ const ShiftCell = ({
   getShiftTypeInfo: (
     shiftType: ShiftType | null
   ) => (typeof shiftTypes)[number] | null;
+  multiSelectMode: boolean;
+  toggleCellSelection: (staffId: string, dayIdx: number) => void;
   isMobile?: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -227,6 +231,13 @@ const ShiftCell = ({
   const onSelect = (type: ShiftType | null) => {
     handleSelectShiftType(member.id, dayIdx, type);
     setIsOpen(false);
+  };
+
+  const handleCellClick = (event: React.MouseEvent) => {
+    if (multiSelectMode) {
+      event.preventDefault();
+      toggleCellSelection(member.id, dayIdx);
+    }
   };
 
   return (
@@ -245,6 +256,7 @@ const ShiftCell = ({
               type="button"
               tabIndex={0}
               className="block w-full h-full flex items-center justify-center relative"
+              onClick={handleCellClick}
             >
               {shiftInfo ? (
                 <span
@@ -731,6 +743,8 @@ export default function AdminCreateShiftPage() {
                           cellShiftsRef={cellShiftsRef}
                           handleSelectShiftType={handleSelectShiftType}
                           getShiftTypeInfo={getShiftTypeInfo}
+                          multiSelectMode={multiSelectMode}
+                          toggleCellSelection={toggleCellSelection}
                         />
                       ))}
                     </tr>
@@ -782,6 +796,8 @@ export default function AdminCreateShiftPage() {
                             cellShiftsRef={cellShiftsRef}
                             handleSelectShiftType={handleSelectShiftType}
                             getShiftTypeInfo={getShiftTypeInfo}
+                            multiSelectMode={multiSelectMode}
+                            toggleCellSelection={toggleCellSelection}
                             isMobile
                           />
                         ))}
