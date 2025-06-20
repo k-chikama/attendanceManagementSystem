@@ -144,28 +144,28 @@ const shiftTypes = [
   {
     id: "early" as const,
     name: "早番",
-    color: "bg-blue-500",
+    color: "bg-sky-200 text-sky-800",
     defaultStartTime: "09:00" as const,
     defaultEndTime: "19:00" as const,
   },
   {
     id: "late" as const,
     name: "遅番",
-    color: "bg-purple-500",
+    color: "bg-violet-200 text-violet-800",
     defaultStartTime: "11:00" as const,
     defaultEndTime: "21:00" as const,
   },
   {
     id: "dayoff" as const,
     name: "休み",
-    color: "bg-gray-500",
+    color: "bg-slate-200 text-slate-800",
     defaultStartTime: "00:00" as const,
     defaultEndTime: "00:00" as const,
   },
   {
     id: "al" as const,
     name: "AL",
-    color: "bg-green-500",
+    color: "bg-emerald-200 text-emerald-800",
     defaultStartTime: "00:00" as const,
     defaultEndTime: "00:00" as const,
   },
@@ -262,17 +262,15 @@ const ShiftCell = ({
   toggleCellSelection: (staffId: string, dayIdx: number) => void;
   isMobile?: boolean;
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const isSelected = selectedCells.some(
-    (c) => c.staffId === member.id && c.dayIdx === dayIdx
-  );
-  const shiftType = cellShiftsRef.current?.[member.id]?.[dayIdx] ?? null;
-  const shiftInfo = getShiftTypeInfo(shiftType);
+  const shiftForCell = cellShiftsRef.current?.[member.id]?.[dayIdx] ?? null;
+  const shiftTypeInfo = getShiftTypeInfo(shiftForCell);
+  const isSelected =
+    selectedCells.find(
+      (cell) => cell.staffId === member.id && cell.dayIdx === dayIdx
+    ) !== undefined;
 
   const onSelect = (type: ShiftType | null) => {
     handleSelectShiftType(member.id, dayIdx, type);
-    setIsOpen(false);
   };
 
   const handleCellClick = (event: React.MouseEvent) => {
@@ -285,69 +283,59 @@ const ShiftCell = ({
   return (
     <td
       className={cn(
-        "border align-middle p-0 transition-all cursor-pointer",
-        isMobile ? "min-w-[48px] h-14 bg-white" : "min-w-[36px] h-12",
-        isOpen ? "ring-2 ring-primary/60 z-20" : "",
-        isSelected ? "ring-2 ring-green-500 ring-offset-2" : ""
+        "border text-center p-0 align-middle",
+        shiftTypeInfo ? "" : "bg-background",
+        isSelected
+          ? isMobile
+            ? "outline-blue-500 outline"
+            : "outline-blue-500 outline"
+          : ""
       )}
+      onClick={handleCellClick}
     >
-      <div className="flex flex-col items-center justify-center h-full">
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              tabIndex={0}
-              className="block w-full h-full flex items-center justify-center relative"
-              onClick={handleCellClick}
-            >
-              {shiftInfo ? (
-                <span
-                  className={cn(
-                    "inline-block rounded font-bold text-xs flex items-center justify-center mx-auto",
-                    isMobile ? "w-10 h-10 shadow" : "w-8 h-8",
-                    shiftInfo.color
-                  )}
-                >
-                  {shiftInfo.name}
-                </span>
-              ) : (
-                <span className="inline-block w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                  -
-                </span>
-              )}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="center"
-            side="top"
-            sideOffset={8}
-            className="w-48 p-3 z-[99999]"
-            onPointerDownOutside={(e) => e.preventDefault()}
-          >
-            <div className="grid grid-cols-2 gap-2">
-              {shiftTypes.map((type) => (
-                <button
-                  key={type.id}
-                  type="button"
-                  className={cn(
-                    "px-3 py-2 text-sm font-medium rounded-md transition-colors text-white hover:opacity-90",
-                    type.color
-                  )}
-                  onClick={() => onSelect(type.id)}
-                >
-                  {type.name}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="px-3 py-2 text-sm font-medium rounded-md transition-colors bg-gray-200 hover:bg-gray-300 col-span-2"
-                onClick={() => onSelect(null)}
-              >
-                クリア
+      <div
+        className={cn(
+          "w-full h-full text-xs flex items-center justify-center transition-colors",
+          shiftTypeInfo ? shiftTypeInfo.color : "hover:bg-muted/50",
+          isSelected ? "ring-2 ring-blue-500 ring-offset-1" : "",
+          isMobile ? "min-w-[80px] h-12" : "h-12"
+        )}
+      >
+        {multiSelectMode ? (
+          <div className="w-full h-full" />
+        ) : (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="w-full h-full flex items-center justify-center">
+                {shiftTypeInfo ? shiftTypeInfo.name : ""}
               </button>
-            </div>
-          </PopoverContent>
-        </Popover>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-1">
+              <div className="flex flex-col gap-1">
+                {shiftTypes.map((type) => (
+                  <Button
+                    key={type.id}
+                    variant="ghost"
+                    size="sm"
+                    className={cn("w-full justify-start", type.color)}
+                    onClick={() => onSelect(type.id)}
+                  >
+                    {type.name}
+                  </Button>
+                ))}
+                <Separator />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => onSelect(null)}
+                >
+                  クリア
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
     </td>
   );
@@ -1308,7 +1296,7 @@ export default function AdminCreateShiftPage() {
               </div>
             </div>
             <CardDescription>
-              セルをクリックしてシフト種別を選択し、登録ボタンで保存してください。
+              月を選択し、シフトを自動生成するか、手動で入力してください。
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1343,7 +1331,7 @@ export default function AdminCreateShiftPage() {
                           className={cn(
                             "border text-xs font-normal px-1 py-2",
                             isSpecial
-                              ? "bg-yellow-100 text-yellow-800"
+                              ? "bg-amber-100 text-amber-800"
                               : "bg-muted"
                           )}
                         >
@@ -1432,7 +1420,7 @@ export default function AdminCreateShiftPage() {
                             className={cn(
                               "sticky left-0 z-10 border-r min-w-[80px] text-left px-2 font-bold text-xs",
                               isSpecial
-                                ? "bg-yellow-100 text-yellow-800"
+                                ? "bg-amber-100 text-amber-800"
                                 : "bg-gray-50"
                             )}
                           >
