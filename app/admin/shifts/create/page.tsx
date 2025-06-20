@@ -638,35 +638,114 @@ export default function AdminCreateShiftPage() {
       return;
     }
 
-    const newCellShifts: { [staffId: string]: (ShiftType | null)[] } = {};
-    staff.forEach((member) => {
-      newCellShifts[member.id] = Array(daysInMonth).fill(null);
-    });
+    const MAX_ATTEMPTS = 50;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const newCellShifts: {
+        [staffId: string]: (ShiftType | "work" | null)[];
+      } = {};
+      let success = true;
 
-    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
-      const shiftsForDay: ShiftType[] = [];
-      for (let i = 0; i < 3; i++) shiftsForDay.push("early");
-      for (let i = 0; i < 3; i++) shiftsForDay.push("late");
+      // Phase 1: Assign days off for each staff member
+      for (const staffId of staffIds) {
+        newCellShifts[staffId] = Array(daysInMonth).fill("work");
+        let daysOffToAssign = 8;
+        let consecutiveWork = 0;
 
-      const remainingSlots = numStaff - 6;
-      for (let i = 0; i < remainingSlots; i++) {
-        shiftsForDay.push(Math.random() < 0.5 ? "early" : "late");
+        for (let day = 0; day < daysInMonth; day++) {
+          let daysLeft = daysInMonth - day;
+          if (consecutiveWork === 4 && daysOffToAssign > 0) {
+            newCellShifts[staffId][day] = "dayoff";
+            daysOffToAssign--;
+            consecutiveWork = 0;
+          } else if (daysOffToAssign === daysLeft) {
+            newCellShifts[staffId][day] = "dayoff";
+            daysOffToAssign--;
+            consecutiveWork = 0;
+          } else {
+            consecutiveWork++;
+          }
+        }
+
+        // Assign remaining days off randomly
+        let workDays = [];
+        for (let i = 0; i < daysInMonth; i++) {
+          if (newCellShifts[staffId][i] === "work") workDays.push(i);
+        }
+
+        if (workDays.length < daysOffToAssign) {
+          // Should not happen with this logic, but as a safeguard
+          success = false;
+          break;
+        }
+
+        workDays.sort(() => Math.random() - 0.5); // Shuffle workdays
+
+        for (let i = 0; i < daysOffToAssign; i++) {
+          const dayToMakeOff = workDays[i];
+          newCellShifts[staffId][dayToMakeOff] = "dayoff";
+        }
+
+        // Final check for 4+ consecutive days
+        let currentConsecutive = 0;
+        for (let day = 0; day < daysInMonth; day++) {
+          if (newCellShifts[staffId][day] !== "dayoff") {
+            currentConsecutive++;
+          } else {
+            currentConsecutive = 0;
+          }
+          if (currentConsecutive > 4) {
+            success = false;
+            break;
+          }
+        }
+        if (!success) break;
+      }
+      if (!success) continue;
+
+      // Phase 2: Fill workdays with 'early' and 'late' shifts
+      for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+        const workingStaff = staffIds.filter(
+          (id) => newCellShifts[id][dayIdx] === "work"
+        );
+        if (workingStaff.length < 6) {
+          success = false;
+          break;
+        }
+
+        const shiftsForDay: ShiftType[] = [];
+        for (let i = 0; i < 3; i++) shiftsForDay.push("early");
+        for (let i = 0; i < 3; i++) shiftsForDay.push("late");
+
+        const remainingSlots = workingStaff.length - 6;
+        for (let i = 0; i < remainingSlots; i++) {
+          shiftsForDay.push(Math.random() < 0.5 ? "early" : "late");
+        }
+        shiftsForDay.sort(() => Math.random() - 0.5);
+
+        workingStaff.forEach((staffId, i) => {
+          newCellShifts[staffId][dayIdx] = shiftsForDay[i];
+        });
       }
 
-      const shuffledShifts = [...shiftsForDay].sort(() => Math.random() - 0.5);
-      const shuffledStaffIds = [...staffIds].sort(() => Math.random() - 0.5);
-
-      for (let i = 0; i < numStaff; i++) {
-        const staffId = shuffledStaffIds[i];
-        newCellShifts[staffId][dayIdx] = shuffledShifts[i];
+      if (success) {
+        cellShiftsRef.current = newCellShifts as {
+          [staffId: string]: (ShiftType | null)[];
+        };
+        forceUpdate();
+        toast({
+          title: "シフト自動作成完了",
+          description:
+            "シフト案が作成されました。内容を確認して保存してください。",
+        });
+        return;
       }
     }
 
-    cellShiftsRef.current = newCellShifts;
-    forceUpdate();
     toast({
-      title: "シフト自動作成完了",
-      description: "シフト案が作成されました。内容を確認して保存してください。",
+      variant: "destructive",
+      title: "自動作成失敗",
+      description:
+        "条件を満たすシフトを作成できませんでした。もう一度お試しください。",
     });
   }, [staff, daysInMonth, toast]);
 
