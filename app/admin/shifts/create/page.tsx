@@ -196,34 +196,38 @@ const toRole = (role: string): "employee" | "manager" | "admin" => {
 const ShiftCell = ({
   member,
   dayIdx,
-  popover,
-  setPopover,
   selectedCells,
   cellShiftsRef,
   handleSelectShiftType,
   getShiftTypeInfo,
-  handleCellClick,
   isMobile = false,
 }: {
   member: SafeUser;
   dayIdx: number;
-  popover: { staffId: string; dayIdx: number } | null;
-  setPopover: (popover: { staffId: string; dayIdx: number } | null) => void;
   selectedCells: { staffId: string; dayIdx: number }[];
   cellShiftsRef: React.RefObject<{ [staffId: string]: (ShiftType | null)[] }>;
-  handleSelectShiftType: (shiftType: ShiftType | null) => void;
+  handleSelectShiftType: (
+    staffId: string,
+    dayIdx: number,
+    shiftType: ShiftType | null
+  ) => void;
   getShiftTypeInfo: (
     shiftType: ShiftType | null
   ) => (typeof shiftTypes)[number] | null;
-  handleCellClick: (staffId: string, dayIdx: number) => void;
   isMobile?: boolean;
 }) => {
-  const isOpen = popover?.staffId === member.id && popover?.dayIdx === dayIdx;
+  const [isOpen, setIsOpen] = useState(false);
+
   const isSelected = selectedCells.some(
     (c) => c.staffId === member.id && c.dayIdx === dayIdx
   );
   const shiftType = cellShiftsRef.current?.[member.id]?.[dayIdx] ?? null;
   const shiftInfo = getShiftTypeInfo(shiftType);
+
+  const onSelect = (type: ShiftType | null) => {
+    handleSelectShiftType(member.id, dayIdx, type);
+    setIsOpen(false);
+  };
 
   return (
     <td
@@ -235,28 +239,12 @@ const ShiftCell = ({
       )}
     >
       <div className="flex flex-col items-center justify-center h-full">
-        <Popover
-          open={isOpen}
-          onOpenChange={(open) => {
-            if (!open && isOpen) {
-              setPopover(null);
-            }
-          }}
-        >
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"
               tabIndex={0}
               className="block w-full h-full flex items-center justify-center relative"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                handleCellClick(member.id, dayIdx);
-              }}
-              onPointerDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-              }}
             >
               {shiftInfo ? (
                 <span
@@ -281,7 +269,6 @@ const ShiftCell = ({
             sideOffset={8}
             className="w-48 p-3 z-[99999]"
             onPointerDownOutside={(e) => e.preventDefault()}
-            onInteractOutside={(e) => e.preventDefault()}
           >
             <div className="grid grid-cols-2 gap-2">
               {shiftTypes.map((type) => (
@@ -292,15 +279,7 @@ const ShiftCell = ({
                     "px-3 py-2 text-sm font-medium rounded-md transition-colors text-white hover:opacity-90",
                     type.color
                   )}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    handleSelectShiftType(type.id);
-                  }}
-                  onPointerDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
+                  onClick={() => onSelect(type.id)}
                 >
                   {type.name}
                 </button>
@@ -308,15 +287,7 @@ const ShiftCell = ({
               <button
                 type="button"
                 className="px-3 py-2 text-sm font-medium rounded-md transition-colors bg-gray-200 hover:bg-gray-300 col-span-2"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  handleSelectShiftType(null);
-                }}
-                onPointerDown={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
+                onClick={() => onSelect(null)}
               >
                 クリア
               </button>
@@ -359,12 +330,6 @@ export default function AdminCreateShiftPage() {
   // セルごとのシフト種別をuseRefで管理
   const cellShiftsRef = useRef<{ [staffId: string]: (ShiftType | null)[] }>({});
   const [, forceUpdate] = useReducer((x) => x + 1, 0);
-
-  // ポップオーバーの管理
-  const [popover, setPopover] = useState<{
-    staffId: string;
-    dayIdx: number;
-  } | null>(null);
 
   // 複数セル選択用のstate
   const [selectedCells, setSelectedCells] = useState<
@@ -516,31 +481,14 @@ export default function AdminCreateShiftPage() {
     }
   };
 
-  // セルクリックでポップオーバーを開く
-  const handleCellClick = useCallback(
-    (staffId: string, dayIdx: number) => {
-      // 既に同じセルが開いている場合は閉じる
-      if (popover?.staffId === staffId && popover?.dayIdx === dayIdx) {
-        setPopover(null);
-      } else {
-        // 新しいセルを開く
-        setPopover({ staffId, dayIdx });
-      }
-    },
-    [popover]
-  );
-
   // シフト種別選択
   const handleSelectShiftType = useCallback(
-    (shiftType: ShiftType | null) => {
-      if (!popover) return;
-      const { staffId, dayIdx } = popover;
+    (staffId: string, dayIdx: number, shiftType: ShiftType | null) => {
       if (!cellShiftsRef.current[staffId]) return;
       cellShiftsRef.current[staffId][dayIdx] = shiftType;
-      setPopover(null);
       forceUpdate();
     },
-    [popover]
+    []
   );
 
   // Firestoreでシフト登録
@@ -779,13 +727,10 @@ export default function AdminCreateShiftPage() {
                           key={dayIdx}
                           member={member}
                           dayIdx={dayIdx}
-                          popover={popover}
-                          setPopover={setPopover}
                           selectedCells={selectedCells}
                           cellShiftsRef={cellShiftsRef}
                           handleSelectShiftType={handleSelectShiftType}
                           getShiftTypeInfo={getShiftTypeInfo}
-                          handleCellClick={handleCellClick}
                         />
                       ))}
                     </tr>
@@ -833,13 +778,10 @@ export default function AdminCreateShiftPage() {
                             key={member.id}
                             member={member}
                             dayIdx={dayIdx}
-                            popover={popover}
-                            setPopover={setPopover}
                             selectedCells={selectedCells}
                             cellShiftsRef={cellShiftsRef}
                             handleSelectShiftType={handleSelectShiftType}
                             getShiftTypeInfo={getShiftTypeInfo}
-                            handleCellClick={handleCellClick}
                             isMobile
                           />
                         ))}
