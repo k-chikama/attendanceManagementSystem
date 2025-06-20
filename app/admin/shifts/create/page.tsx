@@ -966,6 +966,50 @@ export default function AdminCreateShiftPage() {
         }
       }
 
+      // Phase 5: Ensure all staff have exactly 8 days off
+      for (const staffId of staffIds) {
+        const daysOffCount = newCellShifts[staffId].filter(
+          (shift) => shift === "dayoff"
+        ).length;
+
+        if (daysOffCount !== 8) {
+          // 8日間でない場合、調整が必要
+          if (daysOffCount < 8) {
+            // 休みが足りない場合、勤務日から休みに変更
+            const neededDaysOff = 8 - daysOffCount;
+            const workDays = [];
+
+            for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+              if (newCellShifts[staffId][dayIdx] !== "dayoff") {
+                workDays.push(dayIdx);
+              }
+            }
+
+            // ランダムに勤務日を休みに変更
+            workDays.sort(() => Math.random() - 0.5);
+            for (let i = 0; i < neededDaysOff && i < workDays.length; i++) {
+              newCellShifts[staffId][workDays[i]] = "dayoff";
+            }
+          } else if (daysOffCount > 8) {
+            // 休みが多すぎる場合、休み日から勤務に変更
+            const excessDaysOff = daysOffCount - 8;
+            const offDays = [];
+
+            for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+              if (newCellShifts[staffId][dayIdx] === "dayoff") {
+                offDays.push(dayIdx);
+              }
+            }
+
+            // ランダムに休み日を勤務に変更
+            offDays.sort(() => Math.random() - 0.5);
+            for (let i = 0; i < excessDaysOff && i < offDays.length; i++) {
+              newCellShifts[staffId][offDays[i]] = "early"; // または "late"
+            }
+          }
+        }
+      }
+
       // Apply the generated shifts
       cellShiftsRef.current = newCellShifts;
       forceUpdate();
