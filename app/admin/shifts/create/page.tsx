@@ -795,33 +795,37 @@ export default function AdminCreateShiftPage() {
             if (workingStaff.length < 4 || workingStaff.length > 5) {
               if (workingStaff.length > 5) {
                 // 5人を超えている場合、余分なスタッフを土日祝日・8のつく日にスワップ
-                const excessStaff = workingStaff.length - 5;
-                const staffToMove = workingStaff.slice(0, excessStaff);
+                let excessCount = workingStaff.length - 5;
 
-                for (const staffId of staffToMove) {
+                // 超過している人数分、移動できるスタッフを全員の中から探す
+                for (const staffId of workingStaff) {
+                  if (excessCount <= 0) {
+                    break; // 必要な人数を移動し終えたらループを抜ける
+                  }
+
                   let moved = false;
-
                   // このスタッフが休んでいる特別日を探してスワップする
                   for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
-                    if (otherDay !== dayIdx) {
-                      const otherDate = addDays(month, otherDay);
-                      const otherIsSpecial = isSpecialDay(otherDate);
+                    if (otherDay === dayIdx) continue;
 
-                      if (
-                        otherIsSpecial &&
-                        newCellShifts[staffId][otherDay] === "dayoff"
-                      ) {
-                        // スワップ実行（本人の休み日数は変わらない）
-                        const tempShift = newCellShifts[staffId][dayIdx];
-                        newCellShifts[staffId][dayIdx] = "dayoff";
-                        newCellShifts[staffId][otherDay] = tempShift;
-                        adjustmentsMade = true;
-                        moved = true;
-                        break; // スワップ先が見つかったので次のスタッフへ
-                      }
+                    const otherDate = addDays(month, otherDay);
+                    if (
+                      isSpecialDay(otherDate) &&
+                      newCellShifts[staffId][otherDay] === "dayoff"
+                    ) {
+                      // スワップ実行（本人の休み日数は変わらない）
+                      const tempShift = newCellShifts[staffId][dayIdx];
+                      newCellShifts[staffId][dayIdx] = "dayoff";
+                      newCellShifts[staffId][otherDay] = tempShift;
+                      adjustmentsMade = true;
+                      moved = true;
+                      break; // スワップ先が見つかったので次のスタッフへ
                     }
                   }
-                  if (moved) continue; // 1人移動したら次の日のチェックへ
+
+                  if (moved) {
+                    excessCount--; // 移動成功、残りの超過人数を減らす
+                  }
                 }
               } else if (workingStaff.length < 4) {
                 // 4人未満の場合、土日祝日・8のつく日で6人を超えているスタッフからスワップ
