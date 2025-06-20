@@ -298,7 +298,7 @@ const ShiftCell = ({
           "w-full h-full text-xs flex items-center justify-center transition-colors",
           shiftTypeInfo ? shiftTypeInfo.color : "hover:bg-muted/50",
           isSelected ? "ring-2 ring-blue-500 ring-offset-1" : "",
-          isMobile ? "min-w-[80px] h-12" : "h-12"
+          isMobile ? "min-w-[70px] h-16 px-1" : "h-12"
         )}
       >
         {multiSelectMode ? (
@@ -306,11 +306,25 @@ const ShiftCell = ({
         ) : (
           <Popover>
             <PopoverTrigger asChild>
-              <button className="w-full h-full flex items-center justify-center">
-                {shiftTypeInfo ? shiftTypeInfo.name : ""}
+              <button className="w-full h-full flex items-center justify-center min-h-[64px]">
+                {shiftTypeInfo ? (
+                  <span
+                    className={cn(
+                      "font-bold text-xs px-1 py-1 rounded",
+                      isMobile ? "text-[11px]" : "text-xs"
+                    )}
+                  >
+                    {shiftTypeInfo.name}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground text-[10px]">-</span>
+                )}
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-1">
+            <PopoverContent
+              className="w-auto p-1"
+              side={isMobile ? "bottom" : "top"}
+            >
               <div className="flex flex-col gap-1">
                 {shiftTypes.map((type) => (
                   <Button
@@ -612,7 +626,6 @@ export default function AdminCreateShiftPage() {
   const router = useRouter();
   const { toast } = useToast();
   const user = useUser();
-  const role = user?.role ?? null;
   const [staff, setStaff] = useState<SafeUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1229,11 +1242,11 @@ export default function AdminCreateShiftPage() {
     []
   );
 
-  if (!user || role === null) {
+  if (!user || user.role === null) {
     return null;
   }
 
-  if (role !== "admin") {
+  if (user.role !== "admin") {
     return (
       <div className="text-center text-red-500 py-10">
         管理者権限がありません
@@ -1257,6 +1270,7 @@ export default function AdminCreateShiftPage() {
                   size="icon"
                   variant="outline"
                   onClick={() => setMonth(startOfMonth(addMonths(month, -1)))}
+                  className="h-10 w-10"
                 >
                   {"<"}
                 </Button>
@@ -1267,29 +1281,34 @@ export default function AdminCreateShiftPage() {
                   size="icon"
                   variant="outline"
                   onClick={() => setMonth(startOfMonth(addMonths(month, 1)))}
+                  className="h-10 w-10"
                 >
                   {">"}
                 </Button>
               </div>
               {/* 複数選択モードボタン */}
-              <div className="flex items-center gap-2 mt-2">
-                <Button
-                  variant={multiSelectMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setMultiSelectMode((v) => !v)}
-                  aria-pressed={multiSelectMode}
-                >
-                  {multiSelectMode ? "複数選択モード中" : "複数選択モード"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleAutoGenerateShifts}
-                >
-                  自動作成
-                </Button>
+              <div className="flex flex-col sm:flex-row items-center gap-2 mt-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={multiSelectMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setMultiSelectMode((v) => !v)}
+                    aria-pressed={multiSelectMode}
+                    className="h-9 px-3"
+                  >
+                    {multiSelectMode ? "複数選択モード中" : "複数選択モード"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleAutoGenerateShifts}
+                    className="h-9 px-3"
+                  >
+                    自動作成
+                  </Button>
+                </div>
                 {multiSelectMode && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground text-center">
                     セルをタップ/クリックで複数選択・解除できます
                   </span>
                 )}
@@ -1384,27 +1403,24 @@ export default function AdminCreateShiftPage() {
             </div>
             {/* スマホ用テーブル（縦軸：日付・横軸：スタッフ） */}
             <div className="overflow-x-auto block md:hidden">
-              <div className="rounded-lg shadow bg-white p-2">
-                <table className="min-w-full border text-center text-sm">
-                  <thead className="bg-gray-50">
+              <div className="rounded-lg shadow-sm border bg-white">
+                <table className="min-w-full border-collapse text-center">
+                  <thead className="bg-gray-50 sticky top-0 z-20">
                     <tr>
-                      <th className="w-20 sticky left-0 z-10 bg-gray-100 font-bold text-xs py-2 border-r">
+                      <th className="w-16 sticky left-0 z-30 bg-gray-50 font-bold text-xs py-3 px-2 border-r border-b">
                         日付
                       </th>
                       {staff.map((member) => (
                         <th
                           key={member.id}
-                          className="border bg-gray-100 font-bold text-xs px-1 py-2 min-w-[80px]"
+                          className="border-b bg-gray-50 font-bold text-xs px-2 py-3 min-w-[70px] max-w-[70px]"
                         >
-                          <div className="flex flex-col items-center">
-                            <span className="font-bold text-xs truncate">
+                          <div className="flex flex-col items-center space-y-1">
+                            <span className="font-bold text-xs truncate w-full">
                               {member.name}
                             </span>
-                            <span className="text-[10px] text-muted-foreground truncate">
+                            <span className="text-[9px] text-muted-foreground truncate w-full">
                               {member.department}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground truncate">
-                              {member.position}
                             </span>
                           </div>
                         </th>
@@ -1415,18 +1431,20 @@ export default function AdminCreateShiftPage() {
                     {daysArray.map((date, dayIdx) => {
                       const isSpecial = isSpecialDay(date);
                       return (
-                        <tr key={dayIdx} className="h-14">
+                        <tr key={dayIdx} className="h-16">
                           <td
                             className={cn(
-                              "sticky left-0 z-10 border-r min-w-[80px] text-left px-2 font-bold text-xs",
+                              "sticky left-0 z-10 border-r min-w-[64px] text-left px-2 font-bold text-xs bg-white",
                               isSpecial
-                                ? "bg-amber-100 text-amber-800"
+                                ? "bg-amber-50 text-amber-800"
                                 : "bg-gray-50"
                             )}
                           >
-                            <div className="flex flex-col">
-                              <span>{format(date, "M/d", { locale: ja })}</span>
-                              <span className="text-[10px]">
+                            <div className="flex flex-col items-start">
+                              <span className="font-bold text-sm">
+                                {format(date, "M/d", { locale: ja })}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
                                 {format(date, "E", { locale: ja })}
                               </span>
                             </div>
@@ -1454,28 +1472,35 @@ export default function AdminCreateShiftPage() {
             </div>
             {/* 一括編集UI（共通） */}
             {selectedCells.length > 0 && (
-              <div className="flex items-center gap-2 my-2">
-                <span className="text-sm text-muted-foreground">
+              <div className="flex flex-col sm:flex-row items-center gap-2 my-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <span className="text-sm text-blue-800 font-medium">
                   {selectedCells.length}件選択中
                 </span>
-                <Button size="sm" onClick={() => setIsBulkEditOpen(true)}>
-                  一括編集
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setSelectedCells([])}
-                >
-                  選択解除
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => setIsBulkEditOpen(true)}
+                    className="h-8 px-3"
+                  >
+                    一括編集
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedCells([])}
+                    className="h-8 px-3"
+                  >
+                    選択解除
+                  </Button>
+                </div>
               </div>
             )}
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-4">
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground text-center sm:text-left">
                 <p>※ シフトを登録すると、スタッフのシフト表に反映されます。</p>
                 <p>※ 既存のシフトがある場合は上書きされます。</p>
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -1493,7 +1518,7 @@ export default function AdminCreateShiftPage() {
                       description: "全てのシフトをクリアしました。",
                     });
                   }}
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto h-10"
                 >
                   <X className="h-4 w-4 mr-2" />
                   クリア
@@ -1502,7 +1527,7 @@ export default function AdminCreateShiftPage() {
                   variant="default"
                   onClick={handleSaveShifts}
                   disabled={isSubmitting}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm h-12"
                   size="lg"
                 >
                   <Save className="h-5 w-5 mr-2" />
