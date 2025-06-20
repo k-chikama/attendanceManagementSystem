@@ -36,6 +36,7 @@ import {
   Users,
   X,
   Save,
+  AlertTriangle,
 } from "lucide-react";
 import {
   format,
@@ -396,6 +397,34 @@ const checkConsecutiveWorkDays = (
   return totalConsecutive <= maxConsecutive;
 };
 
+// 各日の早番・遅番の比率が妥当かチェックする関数
+const isShiftBalanceValid = (
+  shifts: { [staffId: string]: (ShiftType | null)[] },
+  dayIdx: number,
+  staffIds: string[]
+): boolean => {
+  const workingStaffIds = staffIds.filter(
+    (id) =>
+      shifts[id]?.[dayIdx] &&
+      shifts[id][dayIdx] !== "dayoff" &&
+      shifts[id][dayIdx] !== "al"
+  );
+  const workingStaffCount = workingStaffIds.length;
+
+  if (workingStaffCount === 0) return true;
+
+  const earlyStaffCount = workingStaffIds.filter(
+    (id) => shifts[id][dayIdx] === "early"
+  ).length;
+  const lateStaffCount = workingStaffIds.filter(
+    (id) => shifts[id][dayIdx] === "late"
+  ).length;
+  const minEarly = Math.max(2, Math.floor(workingStaffCount * 0.4));
+  const minLate = Math.max(2, Math.floor(workingStaffCount * 0.4));
+
+  return earlyStaffCount >= minEarly && lateStaffCount >= minLate;
+};
+
 // 連続勤務日数を減らすためのスワップ関数
 const reduceConsecutiveWorkDays = (
   shifts: { [staffId: string]: (ShiftType | null)[] },
@@ -447,12 +476,32 @@ const reduceConsecutiveWorkDays = (
             }
 
             if (isTargetDayValid) {
-              // 副作用チェック：このスワップで新たな連勤が発生しないか
+              // 副作用チェック用の仮シフト作成
               const tempShifts = JSON.parse(JSON.stringify(shifts));
               tempShifts[staffId][sourceDay] = "dayoff";
               tempShifts[staffId][targetDay] = originalShiftType;
 
-              if (checkConsecutiveWorkDays(tempShifts, staffId, targetDay, 4)) {
+              // 1. スワップで新たな連勤が発生しないか
+              const isConsecutiveOk = checkConsecutiveWorkDays(
+                tempShifts,
+                staffId,
+                targetDay,
+                4
+              );
+
+              // 2. スワップ後の早番/遅番比率が崩れないか
+              const isSourceBalanceOk = isShiftBalanceValid(
+                tempShifts,
+                sourceDay,
+                staffIds
+              );
+              const isTargetBalanceOk = isShiftBalanceValid(
+                tempShifts,
+                targetDay,
+                staffIds
+              );
+
+              if (isConsecutiveOk && isSourceBalanceOk && isTargetBalanceOk) {
                 // 安全なスワップを実行
                 shifts[staffId][sourceDay] = "dayoff";
                 shifts[staffId][targetDay] = originalShiftType;
@@ -465,6 +514,110 @@ const reduceConsecutiveWorkDays = (
     }
   }
   return false;
+};
+
+const validateAllShifts = (
+  shifts: { [staffId: string]: (ShiftType | null)[] },
+  staff: SafeUser[],
+  month: Date,
+  daysInMonth: number
+): string[] => {
+  const warnings: string[] = [];
+  const staffIds = staff.map((s) => s.id);
+
+  // 1. スタッフごとの検証
+  staff.forEach((member) => {
+    const staffShifts = shifts[member.id];
+    if (!staffShifts) {
+      warnings.push(`${member.name}: シフトデータがありません。`);
+      return; // 次のスタッフへ
+    }
+
+    // 休み日数の検証
+    const dayOffCount = staffShifts.filter((s) => s === "dayoff").length;
+    if (dayOffCount !== 8) {
+      warnings.push(
+        `${member.name}: 休みの日数が${dayOffCount}日です（8日であるべきです）。`
+      );
+    }
+
+    // 5連勤以上の検証
+    let consecutiveCount = 0;
+    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+      if (
+        staffShifts[dayIdx] &&
+        staffShifts[dayIdx] !== "dayoff" &&
+        staffShifts[dayIdx] !== "al"
+      ) {
+        consecutiveCount++;
+      } else {
+        consecutiveCount = 0;
+      }
+      if (consecutiveCount > 4) {
+        if (consecutiveCount === 5) {
+          warnings.push(
+            `${member.name}: ${format(
+              addDays(month, dayIdx - 4),
+              "M/d"
+            )}から5連勤以上になっています。`
+          );
+        }
+      }
+    }
+  });
+
+  // 2. 日ごとの検証
+  for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+    const currentDate = addDays(month, dayIdx);
+    const dateStr = format(currentDate, "M月d日");
+
+    const workingStaffIds = staffIds.filter(
+      (id) => shifts[id]?.[dayIdx] && shifts[id][dayIdx] !== "dayoff"
+    );
+    const workingStaffCount = workingStaffIds.length;
+
+    // 人数確認
+    const specialDay = isSpecialDay(currentDate);
+    if (specialDay) {
+      if (workingStaffCount < 6) {
+        warnings.push(
+          `${dateStr}: 特別日の勤務が${workingStaffCount}人です（6人以上必要です）。`
+        );
+      }
+    } else {
+      // 平日
+      if (workingStaffCount < 4 || workingStaffCount > 5) {
+        warnings.push(
+          `${dateStr}: 平日の勤務が${workingStaffCount}人です（4人または5人であるべきです）。`
+        );
+      }
+    }
+
+    if (workingStaffCount > 0) {
+      // 早番/遅番のバランス確認
+      const earlyStaffCount = workingStaffIds.filter(
+        (id) => shifts[id][dayIdx] === "early"
+      ).length;
+      const lateStaffCount = workingStaffIds.filter(
+        (id) => shifts[id][dayIdx] === "late"
+      ).length;
+      const minEarly = Math.max(2, Math.floor(workingStaffCount * 0.4));
+      const minLate = Math.max(2, Math.floor(workingStaffCount * 0.4));
+
+      if (earlyStaffCount < minEarly) {
+        warnings.push(
+          `${dateStr}: 早番が${earlyStaffCount}人です（最低${minEarly}人必要です）。`
+        );
+      }
+      if (lateStaffCount < minLate) {
+        warnings.push(
+          `${dateStr}: 遅番が${lateStaffCount}人です（最低${minLate}人必要です）。`
+        );
+      }
+    }
+  }
+
+  return warnings;
 };
 
 export default function AdminCreateShiftPage() {
@@ -505,6 +658,7 @@ export default function AdminCreateShiftPage() {
   >([]);
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
   const [bulkShiftType, setBulkShiftType] = useState<ShiftType | "">("");
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
 
   // 複数選択モードの管理
   const [multiSelectMode, setMultiSelectMode] = useState(false);
@@ -516,6 +670,7 @@ export default function AdminCreateShiftPage() {
       obj[member.id] = Array(daysInMonth).fill(null);
     });
     cellShiftsRef.current = obj;
+    setValidationWarnings([]); // 月変更で警告をクリア
     forceUpdate();
   }, [month, staff, daysInMonth]);
 
@@ -654,6 +809,7 @@ export default function AdminCreateShiftPage() {
     (staffId: string, dayIdx: number, shiftType: ShiftType | null) => {
       if (!cellShiftsRef.current[staffId]) return;
       cellShiftsRef.current[staffId][dayIdx] = shiftType;
+      setValidationWarnings([]); // 編集で警告をクリア
       forceUpdate();
     },
     []
@@ -1007,6 +1163,14 @@ export default function AdminCreateShiftPage() {
       cellShiftsRef.current = newCellShifts;
       forceUpdate();
 
+      const warnings = validateAllShifts(
+        newCellShifts,
+        staff,
+        month,
+        daysInMonth
+      );
+      setValidationWarnings(warnings);
+
       toast({
         title: "シフト自動作成完了",
         description:
@@ -1107,6 +1271,21 @@ export default function AdminCreateShiftPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {validationWarnings.length > 0 && (
+              <div className="my-4 p-4 border-l-4 border-destructive bg-destructive/10 text-destructive rounded-r-lg">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  <h4 className="font-bold">警告</h4>
+                </div>
+                <ul className="mt-2 list-disc pl-5 space-y-1">
+                  {validationWarnings.map((warning, index) => (
+                    <li key={index} className="text-sm">
+                      {warning}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {/* PC用テーブル（横軸：日付・縦軸：スタッフ） */}
             <div className="overflow-x-auto hidden md:block">
               <table className="min-w-[1200px] border text-center">
@@ -1278,6 +1457,7 @@ export default function AdminCreateShiftPage() {
                           Array(daysInMonth).fill(null);
                       }
                     });
+                    setValidationWarnings([]);
                     forceUpdate();
                     toast({
                       title: "シフトをクリアしました",
