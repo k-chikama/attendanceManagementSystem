@@ -362,35 +362,38 @@ const checkConsecutiveWorkDays = (
   const staffShifts = shifts[staffId];
   if (!staffShifts) return true;
 
-  let consecutiveCount = 0;
-
-  // 指定日から前方向に連続勤務日数をカウント
-  for (let i = dayIdx; i >= 0; i--) {
+  let forwardCount = 0;
+  // 前方向の連続勤務日数
+  for (let i = dayIdx - 1; i >= 0; i--) {
     if (
       staffShifts[i] &&
       staffShifts[i] !== "dayoff" &&
       staffShifts[i] !== "al"
     ) {
-      consecutiveCount++;
+      forwardCount++;
     } else {
       break;
     }
   }
 
-  // 指定日から後方向に連続勤務日数をカウント
+  let backwardCount = 0;
+  // 後方向の連続勤務日数
   for (let i = dayIdx + 1; i < staffShifts.length; i++) {
     if (
       staffShifts[i] &&
       staffShifts[i] !== "dayoff" &&
       staffShifts[i] !== "al"
     ) {
-      consecutiveCount++;
+      backwardCount++;
     } else {
       break;
     }
   }
 
-  return consecutiveCount <= maxConsecutive;
+  // チェック対象日自身も勤務日なので+1する
+  const totalConsecutive = forwardCount + backwardCount + 1;
+
+  return totalConsecutive <= maxConsecutive;
 };
 
 // 連続勤務日数を減らすためのスワップ関数
