@@ -22,6 +22,7 @@ import { getAllShifts } from "@/lib/firestoreShifts";
 import AppLayout from "@/components/layout/layout";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
+import { cn } from "@/lib/utils";
 
 // シフト種別を日本語ラベルに変換
 function getShiftTypeLabel(type: string | undefined): string | undefined {
@@ -43,12 +44,14 @@ function getShiftTypeLabel(type: string | undefined): string | undefined {
 
 function ShiftBadge({ type }: { type: string | undefined }) {
   if (!type) return <span className="text-muted-foreground">-</span>;
-  let color = "bg-gray-100 text-gray-700";
-  if (type === "休み") color = "bg-gray-200 text-gray-500";
-  if (type === "早番") color = "bg-blue-100 text-blue-700";
-  if (type === "遅番") color = "bg-purple-100 text-purple-700";
-  if (type === "AL") color = "bg-green-100 text-green-700";
-  if (type === "残業") color = "bg-purple-100 text-purple-700";
+
+  let color = "bg-slate-200 text-slate-800";
+  if (type === "休み") color = "bg-slate-200 text-slate-800";
+  if (type === "早番") color = "bg-sky-200 text-sky-800";
+  if (type === "遅番") color = "bg-violet-200 text-violet-800";
+  if (type === "AL") color = "bg-emerald-200 text-emerald-800";
+  if (type === "残業") color = "bg-orange-200 text-orange-800";
+
   return (
     <span
       className={`inline-block px-2 py-1 rounded text-xs font-medium min-w-[40px] ${color}`}
@@ -125,16 +128,16 @@ export default function ShiftsPage() {
 
   return (
     <AppLayout>
-      <div className="w-full py-4 px-0">
+      <div className="container mx-auto py-4 px-2 sm:py-8 sm:px-6 lg:px-8">
         <div className="w-full space-y-4">
           <Card className="w-full max-w-none">
-            <CardHeader className="w-full">
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between mb-4 w-full">
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={handlePrevMonth}
-                  className="shrink-0"
+                  className="shrink-0 h-10 w-10"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -145,7 +148,7 @@ export default function ShiftsPage() {
                   variant="outline"
                   size="icon"
                   onClick={handleNextMonth}
-                  className="shrink-0"
+                  className="shrink-0 h-10 w-10"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -154,21 +157,21 @@ export default function ShiftsPage() {
             <CardContent>
               {/* PC用テーブル */}
               <div className="overflow-x-auto w-full hidden sm:block">
-                <table className="min-w-[1800px] w-full border text-center text-xs align-middle">
+                <table className="min-w-[1200px] w-full border text-center text-xs align-middle">
                   <thead className="sticky top-0 z-20">
                     <tr>
-                      <th className="border bg-muted px-1.5 py-1 sticky left-0 z-10 text-left min-w-[100px]">
+                      <th className="border bg-muted px-3 py-2 sticky left-0 z-10 text-left min-w-[120px] font-bold">
                         スタッフ
                       </th>
                       {monthDates.map(({ display, day }, i) => (
                         <th
                           key={i}
-                          className="border bg-muted px-1.5 py-1 text-[11px] font-normal min-w-[48px] text-center"
+                          className="border bg-muted px-2 py-2 text-xs font-normal min-w-[60px] text-center"
                         >
                           <div className="flex flex-col items-center">
-                            <span>{display}</span>
-                            <span className="text-[9px] text-muted-foreground">
-                              ({day})
+                            <span className="font-bold">{display}</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {day}
                             </span>
                           </div>
                         </th>
@@ -177,16 +180,23 @@ export default function ShiftsPage() {
                   </thead>
                   <tbody>
                     {users.map((member) => (
-                      <tr key={member.uid}>
-                        <td className="border bg-background sticky left-0 z-10 text-left font-bold px-1.5 py-1 min-w-[100px]">
-                          {member.name}
+                      <tr key={member.uid} className="h-12">
+                        <td className="border bg-background sticky left-0 z-10 text-left font-bold px-3 py-2 min-w-[120px]">
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-bold">
+                                {member.name.charAt(0)}
+                              </span>
+                            </div>
+                            <span className="text-sm">{member.name}</span>
+                          </div>
                         </td>
                         {monthDates.map(({ date }, dayIdx) => {
                           const shift = findShift(member.uid, date);
                           return (
                             <td
                               key={dayIdx}
-                              className="border px-1 py-1 align-middle min-w-[48px]"
+                              className="border px-2 py-2 align-middle min-w-[60px]"
                             >
                               <ShiftBadge
                                 type={getShiftTypeLabel(
@@ -202,53 +212,78 @@ export default function ShiftsPage() {
                 </table>
               </div>
               {/* スマホ用テーブル */}
-              <div className="block sm:hidden w-full overflow-x-auto">
-                <table className="w-full border text-center text-xs align-middle">
-                  <thead>
-                    <tr>
-                      <th className="border bg-muted px-1.5 py-1 min-w-[80px]">
-                        日付
-                      </th>
-                      {users.map((member) => (
-                        <th
-                          key={member.uid}
-                          className="border bg-muted px-1.5 py-1 min-w-[60px]"
-                        >
-                          {member.name}
+              <div className="block sm:hidden w-full overflow-x-auto -mx-2 px-2">
+                <div className="rounded-lg shadow-sm border bg-white min-w-max">
+                  <table className="border-collapse text-center text-xs align-middle">
+                    <thead className="bg-gray-50 sticky top-0 z-20">
+                      <tr>
+                        <th className="w-16 sticky left-0 z-30 bg-gray-50 font-bold text-xs py-3 px-2 border-r border-b">
+                          日付
                         </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {monthDates.map(({ date, display, day }, i) => (
-                      <tr key={date}>
-                        <td className="border bg-background px-1.5 py-1 min-w-[80px] text-left">
-                          <div className="flex flex-col">
-                            <span>{display}</span>
-                            <span className="text-[10px] text-muted-foreground">
-                              ({day})
-                            </span>
-                          </div>
-                        </td>
-                        {users.map((member) => {
-                          const shift = findShift(member.uid, date);
-                          return (
-                            <td
-                              key={member.uid}
-                              className="border px-1 py-1 align-middle min-w-[60px]"
-                            >
-                              <ShiftBadge
-                                type={getShiftTypeLabel(
-                                  shift ? shift.type : undefined
-                                )}
-                              />
-                            </td>
-                          );
-                        })}
+                        {users.map((member) => (
+                          <th
+                            key={member.uid}
+                            className="border-b bg-gray-50 font-bold text-xs px-2 py-3 min-w-[65px] max-w-[65px]"
+                          >
+                            <div className="flex flex-col items-center space-y-0.5">
+                              <span className="font-bold text-xs truncate w-full">
+                                {member.name}
+                              </span>
+                              <span className="text-[9px] text-muted-foreground truncate w-full">
+                                {member.department || ""}
+                              </span>
+                            </div>
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {monthDates.map(({ date, display, day }, i) => {
+                        const isSpecial =
+                          getDay(parseISO(date)) === 0 ||
+                          getDay(parseISO(date)) === 6;
+                        return (
+                          <tr key={date} className="h-16">
+                            <td
+                              className={cn(
+                                "sticky left-0 z-10 border-r min-w-[64px] text-left px-2 font-bold text-xs bg-white",
+                                isSpecial
+                                  ? "bg-amber-50 text-amber-800"
+                                  : "bg-gray-50"
+                              )}
+                            >
+                              <div className="flex flex-col items-start">
+                                <span className="font-bold text-sm">
+                                  {display}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground">
+                                  {day}
+                                </span>
+                              </div>
+                            </td>
+                            {users.map((member) => {
+                              const shift = findShift(member.uid, date);
+                              return (
+                                <td
+                                  key={member.uid}
+                                  className="border px-1 py-2 align-middle min-w-[65px] h-16"
+                                >
+                                  <div className="flex items-center justify-center h-full">
+                                    <ShiftBadge
+                                      type={getShiftTypeLabel(
+                                        shift ? shift.type : undefined
+                                      )}
+                                    />
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </CardContent>
           </Card>
