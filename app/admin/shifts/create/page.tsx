@@ -298,7 +298,7 @@ const ShiftCell = ({
           "w-full h-full text-xs flex items-center justify-center transition-colors",
           shiftTypeInfo ? shiftTypeInfo.color : "hover:bg-muted/50",
           isSelected ? "ring-2 ring-blue-500 ring-offset-1" : "",
-          isMobile ? "min-w-[70px] h-16 px-1" : "h-12"
+          isMobile ? "min-w-[65px] h-16 px-1" : "h-12"
         )}
       >
         {multiSelectMode ? (
@@ -310,8 +310,8 @@ const ShiftCell = ({
                 {shiftTypeInfo ? (
                   <span
                     className={cn(
-                      "font-bold text-xs px-1 py-1 rounded",
-                      isMobile ? "text-[11px]" : "text-xs"
+                      "font-bold px-1 py-1 rounded text-center",
+                      isMobile ? "text-xs" : "text-xs"
                     )}
                   >
                     {shiftTypeInfo.name}
@@ -1256,9 +1256,9 @@ export default function AdminCreateShiftPage() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto py-8 px-2 sm:px-6 lg:px-8">
+      <div className="container mx-auto py-4 px-2 sm:py-8 sm:px-6 lg:px-8">
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-4">
             <CardTitle className="flex items-center mb-2 mt-2">
               <CalendarDays className="h-5 w-5 mr-2" />
               {format(month, "yyyy年M月", { locale: ja })}のシフト表
@@ -1294,22 +1294,22 @@ export default function AdminCreateShiftPage() {
                     size="sm"
                     onClick={() => setMultiSelectMode((v) => !v)}
                     aria-pressed={multiSelectMode}
-                    className="h-9 px-3"
+                    className="h-8 px-2 text-xs"
                   >
-                    {multiSelectMode ? "複数選択モード中" : "複数選択モード"}
+                    {multiSelectMode ? "複数選択中" : "複数選択"}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleAutoGenerateShifts}
-                    className="h-9 px-3"
+                    className="h-8 px-2 text-xs"
                   >
                     自動作成
                   </Button>
                 </div>
                 {multiSelectMode && (
                   <span className="text-xs text-muted-foreground text-center">
-                    セルをタップ/クリックで複数選択・解除できます
+                    セルをタップで選択・解除
                   </span>
                 )}
               </div>
@@ -1402,9 +1402,9 @@ export default function AdminCreateShiftPage() {
               </table>
             </div>
             {/* スマホ用テーブル（縦軸：日付・横軸：スタッフ） */}
-            <div className="overflow-x-auto block md:hidden">
-              <div className="rounded-lg shadow-sm border bg-white">
-                <table className="min-w-full border-collapse text-center">
+            <div className="overflow-x-auto block md:hidden -mx-2 px-2">
+              <div className="rounded-lg shadow-sm border bg-white min-w-max">
+                <table className="border-collapse text-center">
                   <thead className="bg-gray-50 sticky top-0 z-20">
                     <tr>
                       <th className="w-16 sticky left-0 z-30 bg-gray-50 font-bold text-xs py-3 px-2 border-r border-b">
@@ -1413,9 +1413,9 @@ export default function AdminCreateShiftPage() {
                       {staff.map((member) => (
                         <th
                           key={member.id}
-                          className="border-b bg-gray-50 font-bold text-xs px-2 py-3 min-w-[70px] max-w-[70px]"
+                          className="border-b bg-gray-50 font-bold text-xs px-2 py-3 min-w-[65px] max-w-[65px]"
                         >
-                          <div className="flex flex-col items-center space-y-1">
+                          <div className="flex flex-col items-center space-y-0.5">
                             <span className="font-bold text-xs truncate w-full">
                               {member.name}
                             </span>
@@ -1444,7 +1444,7 @@ export default function AdminCreateShiftPage() {
                               <span className="font-bold text-sm">
                                 {format(date, "M/d", { locale: ja })}
                               </span>
-                              <span className="text-[10px] text-muted-foreground">
+                              <span className="text-[9px] text-muted-foreground">
                                 {format(date, "E", { locale: ja })}
                               </span>
                             </div>
