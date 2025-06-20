@@ -710,10 +710,6 @@ export default function AdminCreateShiftPage() {
                                   side="top"
                                   sideOffset={8}
                                   className="w-48 p-3 z-[99999]"
-                                  style={{
-                                    zIndex: 99999,
-                                    position: "fixed",
-                                  }}
                                   onPointerDownOutside={(e) => {
                                     e.preventDefault();
                                   }}
@@ -727,8 +723,8 @@ export default function AdminCreateShiftPage() {
                                         key={type.id}
                                         type="button"
                                         className={cn(
-                                          "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                                          "bg-primary text-primary-foreground hover:bg-primary/90"
+                                          "px-3 py-2 text-sm font-medium rounded-md transition-colors text-white hover:opacity-90",
+                                          type.color
                                         )}
                                         onClick={(event) => {
                                           event.preventDefault();
@@ -883,10 +879,6 @@ export default function AdminCreateShiftPage() {
                                     side="top"
                                     sideOffset={8}
                                     className="w-48 p-3 z-[99999]"
-                                    style={{
-                                      zIndex: 99999,
-                                      position: "fixed",
-                                    }}
                                     onPointerDownOutside={(e) => {
                                       e.preventDefault();
                                     }}
@@ -900,8 +892,8 @@ export default function AdminCreateShiftPage() {
                                           key={type.id}
                                           type="button"
                                           className={cn(
-                                            "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                                            "bg-primary text-primary-foreground hover:bg-primary/90"
+                                            "px-3 py-2 text-sm font-medium rounded-md transition-colors text-white hover:opacity-90",
+                                            type.color
                                           )}
                                           onClick={(event) => {
                                             event.preventDefault();
