@@ -776,7 +776,7 @@ export default function AdminCreateShiftPage() {
                     );
 
                     // 平日で4人以上いる場合はスワップ可能
-                    if (!otherIsSpecial && otherWorkingStaff.length >= 4) {
+                    if (!otherIsSpecial && otherWorkingStaff.length > 4) {
                       // スワップ実行（休み日数は変わらない）
                       const tempShift = newCellShifts[staffToMove][dayIdx];
                       newCellShifts[staffToMove][dayIdx] =
@@ -853,7 +853,7 @@ export default function AdminCreateShiftPage() {
                       );
 
                       // 土日祝日・8のつく日で6人以上いる場合はスワップ可能
-                      if (otherIsSpecial && otherWorkingStaff.length >= 6) {
+                      if (otherIsSpecial && otherWorkingStaff.length > 6) {
                         // スワップ実行（休み日数は変わらない）
                         const tempShift = newCellShifts[staffToMove][dayIdx];
                         newCellShifts[staffToMove][dayIdx] =
