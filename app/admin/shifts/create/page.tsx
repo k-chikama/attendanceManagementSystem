@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useReducer } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useReducer,
+  useCallback,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -199,8 +206,9 @@ export default function AdminCreateShiftPage() {
   const [existingShifts, setExistingShifts] = useState<any[]>([]);
   const [month, setMonth] = useState<Date>(startOfMonth(selectedDate));
   const daysInMonth = getDaysInMonth(month);
-  const daysArray = Array.from({ length: daysInMonth }, (_, i) =>
-    addDays(month, i)
+  const daysArray = useMemo(
+    () => Array.from({ length: daysInMonth }, (_, i) => addDays(month, i)),
+    [month, daysInMonth]
   );
 
   // 新規シフト作成用の状態
@@ -373,19 +381,30 @@ export default function AdminCreateShiftPage() {
   };
 
   // セルクリックでポップオーバーを開く
-  const handleCellClick = (staffId: string, dayIdx: number) => {
-    setPopover({ staffId, dayIdx });
-  };
+  const handleCellClick = useCallback(
+    (staffId: string, dayIdx: number) => {
+      // 既に同じセルが開いている場合は閉じる
+      if (popover?.staffId === staffId && popover?.dayIdx === dayIdx) {
+        setPopover(null);
+      } else {
+        setPopover({ staffId, dayIdx });
+      }
+    },
+    [popover]
+  );
 
   // シフト種別選択
-  const handleSelectShiftType = (shiftType: ShiftType | null) => {
-    if (!popover) return;
-    const { staffId, dayIdx } = popover;
-    if (!cellShiftsRef.current[staffId]) return;
-    cellShiftsRef.current[staffId][dayIdx] = shiftType;
-    setPopover(null);
-    forceUpdate();
-  };
+  const handleSelectShiftType = useCallback(
+    (shiftType: ShiftType | null) => {
+      if (!popover) return;
+      const { staffId, dayIdx } = popover;
+      if (!cellShiftsRef.current[staffId]) return;
+      cellShiftsRef.current[staffId][dayIdx] = shiftType;
+      setPopover(null);
+      forceUpdate();
+    },
+    [popover]
+  );
 
   // Firestoreでシフト登録
   const handleSaveShifts = async () => {
@@ -508,6 +527,12 @@ export default function AdminCreateShiftPage() {
     setSelectedCells([]);
     forceUpdate();
   };
+
+  // シフトタイプの検索を最適化
+  const getShiftTypeInfo = useCallback((shiftType: ShiftType | null) => {
+    if (!shiftType) return null;
+    return shiftTypes.find((t) => t.id === shiftType);
+  }, []);
 
   if (!user || role === null) {
     return null;
@@ -638,8 +663,9 @@ export default function AdminCreateShiftPage() {
                                   <button
                                     type="button"
                                     tabIndex={0}
-                                    className="block w-full h-full flex items-center justify-center"
+                                    className="block w-full h-full flex items-center justify-center relative"
                                     onClick={(event) => {
+                                      event.preventDefault();
                                       event.stopPropagation();
                                       handleCellClick(member.id, dayIdx);
                                     }}
@@ -649,22 +675,18 @@ export default function AdminCreateShiftPage() {
                                       <span
                                         className={cn(
                                           "inline-block w-8 h-8 rounded font-bold text-xs flex items-center justify-center mx-auto",
-                                          shiftTypes.find(
-                                            (t) =>
-                                              t.id ===
-                                              cellShiftsRef.current[member.id][
-                                                dayIdx
-                                              ]
+                                          getShiftTypeInfo(
+                                            cellShiftsRef.current[member.id][
+                                              dayIdx
+                                            ]
                                           )?.color
                                         )}
                                       >
                                         {
-                                          shiftTypes.find(
-                                            (t) =>
-                                              t.id ===
-                                              cellShiftsRef.current[member.id][
-                                                dayIdx
-                                              ]
+                                          getShiftTypeInfo(
+                                            cellShiftsRef.current[member.id][
+                                              dayIdx
+                                            ]
                                           )?.name
                                         }
                                       </span>
@@ -678,17 +700,26 @@ export default function AdminCreateShiftPage() {
                                 <PopoverContent
                                   align="center"
                                   side="top"
-                                  sideOffset={4}
-                                  style={{ zIndex: 99999 }}
+                                  sideOffset={8}
+                                  className="w-48 p-3 z-[99999]"
+                                  style={{
+                                    zIndex: 99999,
+                                    position: "fixed",
+                                  }}
                                 >
                                   <div className="grid grid-cols-2 gap-2">
                                     {shiftTypes.map((type) => (
                                       <button
                                         key={type.id}
                                         type="button"
-                                        onClick={() => {
+                                        className={cn(
+                                          "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                                          "bg-primary text-primary-foreground hover:bg-primary/90"
+                                        )}
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
                                           handleSelectShiftType(type.id);
-                                          setPopover(null);
                                         }}
                                       >
                                         {type.name}
@@ -696,9 +727,11 @@ export default function AdminCreateShiftPage() {
                                     ))}
                                     <button
                                       type="button"
-                                      onClick={() => {
+                                      className="px-3 py-2 text-sm font-medium rounded-md transition-colors bg-gray-200 hover:bg-gray-300 col-span-2"
+                                      onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
                                         handleSelectShiftType(null);
-                                        setPopover(null);
                                       }}
                                     >
                                       クリア
@@ -780,8 +813,9 @@ export default function AdminCreateShiftPage() {
                                     <button
                                       type="button"
                                       tabIndex={0}
-                                      className="block w-full h-full flex items-center justify-center"
+                                      className="block w-full h-full flex items-center justify-center relative"
                                       onClick={(event) => {
+                                        event.preventDefault();
                                         event.stopPropagation();
                                         handleCellClick(member.id, dayIdx);
                                       }}
@@ -793,22 +827,18 @@ export default function AdminCreateShiftPage() {
                                         <span
                                           className={cn(
                                             "inline-block w-10 h-10 rounded-lg font-bold text-sm flex items-center justify-center mx-auto shadow",
-                                            shiftTypes.find(
-                                              (t) =>
-                                                t.id ===
-                                                cellShiftsRef.current[
-                                                  member.id
-                                                ][dayIdx]
+                                            getShiftTypeInfo(
+                                              cellShiftsRef.current[member.id][
+                                                dayIdx
+                                              ]
                                             )?.color
                                           )}
                                         >
                                           {
-                                            shiftTypes.find(
-                                              (t) =>
-                                                t.id ===
-                                                cellShiftsRef.current[
-                                                  member.id
-                                                ][dayIdx]
+                                            getShiftTypeInfo(
+                                              cellShiftsRef.current[member.id][
+                                                dayIdx
+                                              ]
                                             )?.name
                                           }
                                         </span>
@@ -822,17 +852,26 @@ export default function AdminCreateShiftPage() {
                                   <PopoverContent
                                     align="center"
                                     side="top"
-                                    sideOffset={4}
-                                    style={{ zIndex: 99999 }}
+                                    sideOffset={8}
+                                    className="w-48 p-3 z-[99999]"
+                                    style={{
+                                      zIndex: 99999,
+                                      position: "fixed",
+                                    }}
                                   >
                                     <div className="grid grid-cols-2 gap-2">
                                       {shiftTypes.map((type) => (
                                         <button
                                           key={type.id}
                                           type="button"
-                                          onClick={() => {
+                                          className={cn(
+                                            "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                                            "bg-primary text-primary-foreground hover:bg-primary/90"
+                                          )}
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
                                             handleSelectShiftType(type.id);
-                                            setPopover(null);
                                           }}
                                         >
                                           {type.name}
@@ -840,9 +879,11 @@ export default function AdminCreateShiftPage() {
                                       ))}
                                       <button
                                         type="button"
-                                        onClick={() => {
+                                        className="px-3 py-2 text-sm font-medium rounded-md transition-colors bg-gray-200 hover:bg-gray-300 col-span-2"
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
                                           handleSelectShiftType(null);
-                                          setPopover(null);
                                         }}
                                       >
                                         クリア
