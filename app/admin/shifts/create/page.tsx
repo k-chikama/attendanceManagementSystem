@@ -791,11 +791,11 @@ export default function AdminCreateShiftPage() {
               }
             }
           } else {
-            // 平日は4人固定（スワップ方式で休み日数を維持）
-            if (workingStaff.length !== 4) {
-              if (workingStaff.length > 4) {
-                // 4人を超えている場合、余分なスタッフを土日祝日・8のつく日にスワップ
-                const excessStaff = workingStaff.length - 4;
+            // 平日は4人または5人（スワップ方式で休み日数を維持）
+            if (workingStaff.length < 4 || workingStaff.length > 5) {
+              if (workingStaff.length > 5) {
+                // 5人を超えている場合、余分なスタッフを土日祝日・8のつく日にスワップ
+                const excessStaff = workingStaff.length - 5;
                 const staffToMove = workingStaff.slice(0, excessStaff);
 
                 for (const staffId of staffToMove) {
