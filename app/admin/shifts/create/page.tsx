@@ -396,15 +396,14 @@ const checkConsecutiveWorkDays = (
   return totalConsecutive <= maxConsecutive;
 };
 
-// 連続勤務日数を減らすためのスワップ関数（ユーザー提案ベース）
-const reduceConsecutiveWorkDays = (
+// 連続勤務日数を減らすためのスワップ関数（シングルスワップ）
+const reduceConsecutiveWorkDays_singlePersonSwap = (
   shifts: { [staffId: string]: (ShiftType | null)[] },
   staffIds: string[],
   month: Date,
   daysInMonth: number
 ): boolean => {
   for (const staffId of staffIds) {
-    // 5連勤以上になっている日を探す
     for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
       if (
         shifts[staffId][dayIdx] &&
@@ -412,11 +411,9 @@ const reduceConsecutiveWorkDays = (
         shifts[staffId][dayIdx] !== "al" &&
         !checkConsecutiveWorkDays(shifts, staffId, dayIdx, 4)
       ) {
-        // 5連勤以上を発見。この勤務日(dayIdx)を休みにできるか試す
         const sourceDay = dayIdx;
         const originalShiftType = shifts[staffId][sourceDay];
 
-        // 1. sourceDayを休みに変更した場合の制約チェック
         const sourceDate = addDays(month, sourceDay);
         const isSourceSpecial = isSpecialDay(sourceDate);
         const sourceStaffCount = staffIds.filter(
@@ -426,25 +423,15 @@ const reduceConsecutiveWorkDays = (
 
         let isSourceDayValid = false;
         if (isSourceSpecial) {
-          if (newSourceStaffCount >= 6) {
-            isSourceDayValid = true;
-          }
+          if (newSourceStaffCount >= 6) isSourceDayValid = true;
         } else {
-          // Weekday
-          if (newSourceStaffCount >= 4) {
-            isSourceDayValid = true;
-          }
+          if (newSourceStaffCount >= 4) isSourceDayValid = true;
         }
 
-        if (!isSourceDayValid) {
-          // この日を休みにすると人数不足になるので、連勤内の別の日を試す
-          continue;
-        }
+        if (!isSourceDayValid) continue;
 
-        // 2. ↑がOKなら、代わりに勤務日を入れられる休みの日(targetDay)を探す
         for (let targetDay = 0; targetDay < daysInMonth; targetDay++) {
           if (shifts[staffId][targetDay] === "dayoff") {
-            // targetDayを勤務日に変更した場合の制約チェック
             const targetDate = addDays(month, targetDay);
             const isTargetSpecial = isSpecialDay(targetDate);
             const targetStaffCount = staffIds.filter(
@@ -454,20 +441,14 @@ const reduceConsecutiveWorkDays = (
 
             let isTargetDayValid = false;
             if (isTargetSpecial) {
-              isTargetDayValid = true; // No upper limit on special days
+              isTargetDayValid = true;
             } else {
-              // Weekday
-              if (newTargetStaffCount <= 5) {
-                isTargetDayValid = true;
-              }
+              if (newTargetStaffCount <= 5) isTargetDayValid = true;
             }
 
             if (isTargetDayValid) {
-              // 両方の条件を満たすスワップ先を発見！
               shifts[staffId][sourceDay] = "dayoff";
               shifts[staffId][targetDay] = originalShiftType;
-
-              // 調整を行ったのでtrueを返す
               return true;
             }
           }
@@ -475,8 +456,44 @@ const reduceConsecutiveWorkDays = (
       }
     }
   }
+  return false;
+};
 
-  // 全ての探索でスワップが見つからなかった
+// 連続勤務日数を減らすためのスワップ関数（4者間スワップ）
+const reduceConsecutiveWorkDays_fourWaySwap = (
+  shifts: { [staffId: string]: (ShiftType | null)[] },
+  staffIds: string[],
+  daysInMonth: number
+): boolean => {
+  for (const staffA of staffIds) {
+    for (let dayX = 0; dayX < daysInMonth; dayX++) {
+      if (
+        shifts[staffA][dayX] &&
+        shifts[staffA][dayX] !== "dayoff" &&
+        shifts[staffA][dayX] !== "al" &&
+        !checkConsecutiveWorkDays(shifts, staffA, dayX, 4)
+      ) {
+        const shiftTypeOfStaffA = shifts[staffA][dayX];
+        for (let dayY = 0; dayY < daysInMonth; dayY++) {
+          if (shifts[staffA][dayY] === "dayoff") {
+            for (const staffB of staffIds) {
+              if (
+                staffA !== staffB &&
+                shifts[staffB][dayX] === "dayoff" &&
+                shifts[staffB][dayY] === shiftTypeOfStaffA
+              ) {
+                shifts[staffA][dayX] = "dayoff";
+                shifts[staffA][dayY] = shiftTypeOfStaffA;
+                shifts[staffB][dayY] = "dayoff";
+                shifts[staffB][dayX] = shiftTypeOfStaffA;
+                return true;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
   return false;
 };
 
@@ -1002,70 +1019,28 @@ export default function AdminCreateShiftPage() {
         }
       }
 
-      // Phase 4: 早番・遅番の調整
-      let shiftAdjustmentsMade = true;
-      let shiftMaxIterations = 5;
-
-      while (shiftAdjustmentsMade && shiftMaxIterations > 0) {
-        shiftAdjustmentsMade = false;
-        shiftMaxIterations--;
-
-        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
-          const workingStaff = staffIds.filter(
-            (id) => newCellShifts[id][dayIdx] !== "dayoff"
-          );
-
-          const earlyStaff = workingStaff.filter(
-            (id) => newCellShifts[id][dayIdx] === "early"
-          );
-          const lateStaff = workingStaff.filter(
-            (id) => newCellShifts[id][dayIdx] === "late"
-          );
-
-          const minEarly = Math.max(2, Math.floor(workingStaff.length * 0.4));
-          const minLate = Math.max(2, Math.floor(workingStaff.length * 0.4));
-
-          // 早番と遅番の調整を同時に行う
-          if (earlyStaff.length < minEarly && lateStaff.length > minLate) {
-            // 早番が足りなくて遅番が余っている場合
-            const neededEarly = minEarly - earlyStaff.length;
-            const availableLate = lateStaff.length - minLate;
-            const swapCount = Math.min(neededEarly, availableLate);
-
-            const lateStaffToSwap = lateStaff.slice(0, swapCount);
-            for (const staffId of lateStaffToSwap) {
-              newCellShifts[staffId][dayIdx] = "early";
-              shiftAdjustmentsMade = true;
-            }
-          } else if (
-            lateStaff.length < minLate &&
-            earlyStaff.length > minEarly
-          ) {
-            // 遅番が足りなくて早番が余っている場合
-            const neededLate = minLate - lateStaff.length;
-            const availableEarly = earlyStaff.length - minEarly;
-            const swapCount = Math.min(neededLate, availableEarly);
-
-            const earlyStaffToSwap = earlyStaff.slice(0, swapCount);
-            for (const staffId of earlyStaffToSwap) {
-              newCellShifts[staffId][dayIdx] = "late";
-              shiftAdjustmentsMade = true;
-            }
-          }
-        }
-      }
-
-      // Phase 5: 連続勤務日数の最終調整（5連勤以上を防ぐ）
+      // Phase 4: 連続勤務日数の最終調整（5連勤以上を防ぐ）
       let consecutiveAdjustmentsMade = true;
-      let consecutiveMaxIterations = 30; // 試行回数を増やす
+      let consecutiveMaxIterations = 50; // さらに試行回数を増やす
 
       while (consecutiveAdjustmentsMade && consecutiveMaxIterations > 0) {
-        consecutiveAdjustmentsMade = reduceConsecutiveWorkDays(
+        // まずシングルスワップを試す
+        consecutiveAdjustmentsMade = reduceConsecutiveWorkDays_singlePersonSwap(
           newCellShifts,
           staffIds,
           month,
           daysInMonth
         );
+
+        // シングルスワップで解決できなければ4者間スワップを試す
+        if (!consecutiveAdjustmentsMade) {
+          consecutiveAdjustmentsMade = reduceConsecutiveWorkDays_fourWaySwap(
+            newCellShifts,
+            staffIds,
+            daysInMonth
+          );
+        }
+
         consecutiveMaxIterations--;
       }
 
