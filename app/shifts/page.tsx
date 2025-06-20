@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   format,
   startOfMonth,
@@ -15,12 +16,14 @@ import {
   isToday,
   parseISO,
   getDay,
+  addDays,
+  subDays,
 } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getAllUsers } from "@/lib/firestoreUsers";
 import { getAllShifts } from "@/lib/firestoreShifts";
 import AppLayout from "@/components/layout/layout";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Users, User } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +45,7 @@ function getShiftTypeLabel(type: string | undefined): string | undefined {
   }
 }
 
-function ShiftBadge({ type }: { type: string | undefined }) {
+function ShiftBadge({ type }: { type: string | undefined | null }) {
   if (!type) return <span className="text-muted-foreground">-</span>;
 
   let color = "bg-slate-200 text-slate-800";
@@ -58,6 +61,122 @@ function ShiftBadge({ type }: { type: string | undefined }) {
     >
       {type}
     </span>
+  );
+}
+
+// 昨日・今日・明日のシフト表示コンポーネント
+function TodayShifts({
+  shifts,
+  users,
+  currentUser,
+}: {
+  shifts: any[];
+  users: any[];
+  currentUser: any;
+}) {
+  const today = new Date();
+  const yesterday = subDays(today, 1);
+  const tomorrow = addDays(today, 1);
+
+  const getShiftForDate = (userId: string | null | undefined, date: Date) => {
+    if (!userId) return undefined;
+    const dateStr = format(date, "yyyy-MM-dd");
+    const shift = shifts.find((s) => s.userId === userId && s.date === dateStr);
+    return getShiftTypeLabel(shift?.type);
+  };
+
+  const getCurrentUserShift = (date: Date) => {
+    if (!currentUser?.id) return null;
+    return getShiftForDate(currentUser.id, date);
+  };
+
+  const getWorkingStaff = (date: Date) => {
+    return users.filter((user) => {
+      const shift = getShiftForDate(user.id || user.uid, date);
+      return shift && shift !== "休み" && shift !== "AL";
+    });
+  };
+
+  const days = [
+    { date: yesterday, label: "昨日", isToday: false },
+    { date: today, label: "今日", isToday: true },
+    { date: tomorrow, label: "明日", isToday: false },
+  ];
+
+  return (
+    <div className="mb-6">
+      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+        <Calendar className="h-5 w-5" />
+        直近のシフト
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {days.map(({ date, label, isToday }) => {
+          const currentUserShift = getCurrentUserShift(date);
+          const workingStaff = getWorkingStaff(date);
+          const dateStr = format(date, "M/d", { locale: ja });
+          const dayStr = format(date, "E", { locale: ja });
+
+          return (
+            <Card
+              key={label}
+              className={cn(
+                "p-4",
+                isToday ? "ring-2 ring-primary/20 bg-primary/5" : ""
+              )}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="font-bold text-lg">{label}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {dateStr} ({dayStr})
+                  </p>
+                </div>
+                {isToday && (
+                  <span className="px-2 py-1 bg-primary text-primary-foreground text-xs rounded-full">
+                    今日
+                  </span>
+                )}
+              </div>
+
+              {/* 自分のシフト */}
+              <div className="mb-3">
+                <p className="text-sm font-medium text-muted-foreground mb-1">
+                  あなたのシフト
+                </p>
+                <div className="flex items-center gap-2">
+                  <ShiftBadge type={currentUserShift} />
+                  <span className="text-sm">
+                    {currentUserShift || "未設定"}
+                  </span>
+                </div>
+              </div>
+
+              {/* 勤務スタッフ */}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">
+                  勤務スタッフ ({workingStaff.length}人)
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {workingStaff.slice(0, 3).map((staff) => (
+                    <span
+                      key={staff.uid}
+                      className="inline-block px-2 py-1 bg-muted text-xs rounded"
+                    >
+                      {staff.name}
+                    </span>
+                  ))}
+                  {workingStaff.length > 3 && (
+                    <span className="inline-block px-2 py-1 bg-muted text-xs rounded">
+                      +{workingStaff.length - 3}人
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -155,136 +274,278 @@ export default function ShiftsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {/* PC用テーブル */}
-              <div className="overflow-x-auto w-full hidden sm:block">
-                <table className="min-w-[1200px] w-full border text-center text-xs align-middle">
-                  <thead className="sticky top-0 z-20">
-                    <tr>
-                      <th className="border bg-muted px-3 py-2 sticky left-0 z-10 text-left min-w-[120px] font-bold">
-                        スタッフ
-                      </th>
-                      {monthDates.map(({ display, day }, i) => (
-                        <th
-                          key={i}
-                          className="border bg-muted px-2 py-2 text-xs font-normal min-w-[60px] text-center"
-                        >
-                          <div className="flex flex-col items-center">
-                            <span className="font-bold">{display}</span>
-                            <span className="text-[10px] text-muted-foreground">
-                              {day}
-                            </span>
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((member) => (
-                      <tr key={member.uid} className="h-12">
-                        <td className="border bg-background sticky left-0 z-10 text-left font-bold px-3 py-2 min-w-[120px]">
-                          <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-bold">
-                                {member.name.charAt(0)}
-                              </span>
-                            </div>
-                            <span className="text-sm">{member.name}</span>
-                          </div>
-                        </td>
-                        {monthDates.map(({ date }, dayIdx) => {
-                          const shift = findShift(member.uid, date);
-                          return (
-                            <td
-                              key={dayIdx}
-                              className="border px-2 py-2 align-middle min-w-[60px]"
+              {/* 直近のシフト表示 */}
+              <TodayShifts shifts={shifts} users={users} currentUser={user} />
+
+              {/* シフト表タブ */}
+              <Tabs defaultValue="all" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="all" className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    全員のシフト
+                  </TabsTrigger>
+                  <TabsTrigger value="my" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    自分のシフト
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="all" className="space-y-4">
+                  {/* PC用テーブル */}
+                  <div className="overflow-x-auto w-full hidden sm:block">
+                    <table className="min-w-[1200px] w-full border text-center text-xs align-middle">
+                      <thead className="sticky top-0 z-20">
+                        <tr>
+                          <th className="border bg-muted px-3 py-2 sticky left-0 z-10 text-left min-w-[120px] font-bold">
+                            スタッフ
+                          </th>
+                          {monthDates.map(({ display, day }, i) => (
+                            <th
+                              key={i}
+                              className="border bg-muted px-2 py-2 text-xs font-normal min-w-[60px] text-center"
                             >
+                              <div className="flex flex-col items-center">
+                                <span className="font-bold">{display}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {day}
+                                </span>
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map((member) => (
+                          <tr key={member.id || member.uid} className="h-12">
+                            <td className="border bg-background sticky left-0 z-10 text-left font-bold px-3 py-2 min-w-[120px]">
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                  <span className="text-xs font-bold">
+                                    {member.name.charAt(0)}
+                                  </span>
+                                </div>
+                                <span className="text-sm">{member.name}</span>
+                              </div>
+                            </td>
+                            {monthDates.map(({ date }, dayIdx) => {
+                              const shift = findShift(
+                                member.id || member.uid,
+                                date
+                              );
+                              return (
+                                <td
+                                  key={dayIdx}
+                                  className="border px-2 py-2 align-middle min-w-[60px]"
+                                >
+                                  <ShiftBadge
+                                    type={getShiftTypeLabel(
+                                      shift ? shift.type : undefined
+                                    )}
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* スマホ用テーブル */}
+                  <div className="block sm:hidden w-full overflow-x-auto -mx-2 px-2">
+                    <div className="rounded-lg shadow-sm border bg-white min-w-max">
+                      <table className="border-collapse text-center text-xs align-middle">
+                        <thead className="bg-gray-50 sticky top-0 z-20">
+                          <tr>
+                            <th className="w-16 sticky left-0 z-30 bg-gray-50 font-bold text-xs py-3 px-2 border-r border-b">
+                              日付
+                            </th>
+                            {users.map((member) => (
+                              <th
+                                key={member.id || member.uid}
+                                className="border-b bg-gray-50 font-bold text-xs px-2 py-3 min-w-[65px] max-w-[65px]"
+                              >
+                                <div className="flex flex-col items-center space-y-0.5">
+                                  <span className="font-bold text-xs truncate w-full">
+                                    {member.name}
+                                  </span>
+                                  <span className="text-[9px] text-muted-foreground truncate w-full">
+                                    {member.department || ""}
+                                  </span>
+                                </div>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthDates.map(({ date, display, day }, i) => {
+                            const isSpecial =
+                              getDay(parseISO(date)) === 0 ||
+                              getDay(parseISO(date)) === 6;
+                            return (
+                              <tr key={date} className="h-16">
+                                <td
+                                  className={cn(
+                                    "sticky left-0 z-10 border-r min-w-[64px] text-left px-2 font-bold text-xs bg-white",
+                                    isSpecial
+                                      ? "bg-amber-50 text-amber-800"
+                                      : "bg-gray-50"
+                                  )}
+                                >
+                                  <div className="flex flex-col items-start">
+                                    <span className="font-bold text-sm">
+                                      {display}
+                                    </span>
+                                    <span className="text-[9px] text-muted-foreground">
+                                      {day}
+                                    </span>
+                                  </div>
+                                </td>
+                                {users.map((member) => {
+                                  const shift = findShift(
+                                    member.id || member.uid,
+                                    date
+                                  );
+                                  return (
+                                    <td
+                                      key={member.id || member.uid}
+                                      className="border px-1 py-2 align-middle min-w-[65px] h-16"
+                                    >
+                                      <div className="flex items-center justify-center h-full">
+                                        <ShiftBadge
+                                          type={getShiftTypeLabel(
+                                            shift ? shift.type : undefined
+                                          )}
+                                        />
+                                      </div>
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="my" className="space-y-4">
+                  {/* 自分のシフトのみ表示 */}
+                  <div className="overflow-x-auto w-full hidden sm:block">
+                    <table className="min-w-[800px] w-full border text-center text-xs align-middle">
+                      <thead className="sticky top-0 z-20">
+                        <tr>
+                          <th className="border bg-muted px-3 py-2 sticky left-0 z-10 text-left min-w-[120px] font-bold">
+                            日付
+                          </th>
+                          <th className="border bg-muted px-2 py-2 text-xs font-normal min-w-[100px] text-center">
+                            シフト
+                          </th>
+                          <th className="border bg-muted px-2 py-2 text-xs font-normal min-w-[100px] text-center">
+                            勤務時間
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {monthDates.map(({ date, display, day }, dayIdx) => {
+                          const shift = findShift(user?.id || "", date);
+                          const isSpecial =
+                            getDay(parseISO(date)) === 0 ||
+                            getDay(parseISO(date)) === 6;
+                          const isCurrentDay = isToday(parseISO(date));
+
+                          return (
+                            <tr
+                              key={date}
+                              className={cn(
+                                "h-12",
+                                isCurrentDay ? "bg-primary/5" : ""
+                              )}
+                            >
+                              <td className="border bg-background sticky left-0 z-10 text-left font-bold px-3 py-2 min-w-[120px]">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm">{display}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    ({day})
+                                  </span>
+                                  {isCurrentDay && (
+                                    <span className="px-1 py-0.5 bg-primary text-primary-foreground text-xs rounded">
+                                      今日
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="border px-2 py-2 align-middle min-w-[100px]">
+                                <ShiftBadge
+                                  type={getShiftTypeLabel(
+                                    shift ? shift.type : undefined
+                                  )}
+                                />
+                              </td>
+                              <td className="border px-2 py-2 align-middle min-w-[100px] text-sm">
+                                {shift?.startTime && shift?.endTime
+                                  ? `${shift.startTime} - ${shift.endTime}`
+                                  : "-"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* スマホ用自分のシフトテーブル */}
+                  <div className="block sm:hidden w-full">
+                    <div className="space-y-3">
+                      {monthDates.map(({ date, display, day }, dayIdx) => {
+                        const shift = findShift(user?.id || "", date);
+                        const isSpecial =
+                          getDay(parseISO(date)) === 0 ||
+                          getDay(parseISO(date)) === 6;
+                        const isCurrentDay = isToday(parseISO(date));
+
+                        return (
+                          <Card
+                            key={date}
+                            className={cn(
+                              "p-4",
+                              isCurrentDay
+                                ? "ring-2 ring-primary/20 bg-primary/5"
+                                : ""
+                            )}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <h4 className="font-bold text-lg">{display}</h4>
+                                <p className="text-sm text-muted-foreground">
+                                  {day}
+                                </p>
+                              </div>
+                              {isCurrentDay && (
+                                <span className="px-2 py-1 bg-primary text-primary-foreground text-xs rounded-full">
+                                  今日
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3">
                               <ShiftBadge
                                 type={getShiftTypeLabel(
                                   shift ? shift.type : undefined
                                 )}
                               />
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {/* スマホ用テーブル */}
-              <div className="block sm:hidden w-full overflow-x-auto -mx-2 px-2">
-                <div className="rounded-lg shadow-sm border bg-white min-w-max">
-                  <table className="border-collapse text-center text-xs align-middle">
-                    <thead className="bg-gray-50 sticky top-0 z-20">
-                      <tr>
-                        <th className="w-16 sticky left-0 z-30 bg-gray-50 font-bold text-xs py-3 px-2 border-r border-b">
-                          日付
-                        </th>
-                        {users.map((member) => (
-                          <th
-                            key={member.uid}
-                            className="border-b bg-gray-50 font-bold text-xs px-2 py-3 min-w-[65px] max-w-[65px]"
-                          >
-                            <div className="flex flex-col items-center space-y-0.5">
-                              <span className="font-bold text-xs truncate w-full">
-                                {member.name}
-                              </span>
-                              <span className="text-[9px] text-muted-foreground truncate w-full">
-                                {member.department || ""}
+                              <span className="text-sm">
+                                {shift?.startTime && shift?.endTime
+                                  ? `${shift.startTime} - ${shift.endTime}`
+                                  : "時間未設定"}
                               </span>
                             </div>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {monthDates.map(({ date, display, day }, i) => {
-                        const isSpecial =
-                          getDay(parseISO(date)) === 0 ||
-                          getDay(parseISO(date)) === 6;
-                        return (
-                          <tr key={date} className="h-16">
-                            <td
-                              className={cn(
-                                "sticky left-0 z-10 border-r min-w-[64px] text-left px-2 font-bold text-xs bg-white",
-                                isSpecial
-                                  ? "bg-amber-50 text-amber-800"
-                                  : "bg-gray-50"
-                              )}
-                            >
-                              <div className="flex flex-col items-start">
-                                <span className="font-bold text-sm">
-                                  {display}
-                                </span>
-                                <span className="text-[9px] text-muted-foreground">
-                                  {day}
-                                </span>
-                              </div>
-                            </td>
-                            {users.map((member) => {
-                              const shift = findShift(member.uid, date);
-                              return (
-                                <td
-                                  key={member.uid}
-                                  className="border px-1 py-2 align-middle min-w-[65px] h-16"
-                                >
-                                  <div className="flex items-center justify-center h-full">
-                                    <ShiftBadge
-                                      type={getShiftTypeLabel(
-                                        shift ? shift.type : undefined
-                                      )}
-                                    />
-                                  </div>
-                                </td>
-                              );
-                            })}
-                          </tr>
+                          </Card>
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
