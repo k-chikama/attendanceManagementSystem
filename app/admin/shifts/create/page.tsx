@@ -387,6 +387,7 @@ export default function AdminCreateShiftPage() {
       if (popover?.staffId === staffId && popover?.dayIdx === dayIdx) {
         setPopover(null);
       } else {
+        // 新しいセルを開く
         setPopover({ staffId, dayIdx });
       }
     },
@@ -656,7 +657,10 @@ export default function AdminCreateShiftPage() {
                               <Popover
                                 open={isOpen}
                                 onOpenChange={(open) => {
-                                  if (!open) setPopover(null);
+                                  // ポップアップが開いている状態で、外側をクリックした場合のみ閉じる
+                                  if (!open && isOpen) {
+                                    setPopover(null);
+                                  }
                                 }}
                               >
                                 <PopoverTrigger asChild>
@@ -668,6 +672,10 @@ export default function AdminCreateShiftPage() {
                                       event.preventDefault();
                                       event.stopPropagation();
                                       handleCellClick(member.id, dayIdx);
+                                    }}
+                                    onPointerDown={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
                                     }}
                                   >
                                     {cellShiftsRef.current[member.id] &&
@@ -706,6 +714,12 @@ export default function AdminCreateShiftPage() {
                                     zIndex: 99999,
                                     position: "fixed",
                                   }}
+                                  onPointerDownOutside={(e) => {
+                                    e.preventDefault();
+                                  }}
+                                  onInteractOutside={(e) => {
+                                    e.preventDefault();
+                                  }}
                                 >
                                   <div className="grid grid-cols-2 gap-2">
                                     {shiftTypes.map((type) => (
@@ -721,6 +735,10 @@ export default function AdminCreateShiftPage() {
                                           event.stopPropagation();
                                           handleSelectShiftType(type.id);
                                         }}
+                                        onPointerDown={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                        }}
                                       >
                                         {type.name}
                                       </button>
@@ -732,6 +750,10 @@ export default function AdminCreateShiftPage() {
                                         event.preventDefault();
                                         event.stopPropagation();
                                         handleSelectShiftType(null);
+                                      }}
+                                      onPointerDown={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
                                       }}
                                     >
                                       クリア
@@ -806,7 +828,10 @@ export default function AdminCreateShiftPage() {
                                 <Popover
                                   open={isOpen}
                                   onOpenChange={(open) => {
-                                    if (!open) setPopover(null);
+                                    // ポップアップが開いている状態で、外側をクリックした場合のみ閉じる
+                                    if (!open && isOpen) {
+                                      setPopover(null);
+                                    }
                                   }}
                                 >
                                   <PopoverTrigger asChild>
@@ -818,6 +843,10 @@ export default function AdminCreateShiftPage() {
                                         event.preventDefault();
                                         event.stopPropagation();
                                         handleCellClick(member.id, dayIdx);
+                                      }}
+                                      onPointerDown={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
                                       }}
                                     >
                                       {cellShiftsRef.current[member.id] &&
@@ -858,6 +887,12 @@ export default function AdminCreateShiftPage() {
                                       zIndex: 99999,
                                       position: "fixed",
                                     }}
+                                    onPointerDownOutside={(e) => {
+                                      e.preventDefault();
+                                    }}
+                                    onInteractOutside={(e) => {
+                                      e.preventDefault();
+                                    }}
                                   >
                                     <div className="grid grid-cols-2 gap-2">
                                       {shiftTypes.map((type) => (
@@ -873,6 +908,10 @@ export default function AdminCreateShiftPage() {
                                             event.stopPropagation();
                                             handleSelectShiftType(type.id);
                                           }}
+                                          onPointerDown={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                          }}
                                         >
                                           {type.name}
                                         </button>
@@ -884,6 +923,10 @@ export default function AdminCreateShiftPage() {
                                           event.preventDefault();
                                           event.stopPropagation();
                                           handleSelectShiftType(null);
+                                        }}
+                                        onPointerDown={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
                                         }}
                                       >
                                         クリア
