@@ -625,6 +625,51 @@ export default function AdminCreateShiftPage() {
     forceUpdate();
   };
 
+  const handleAutoGenerateShifts = useCallback(() => {
+    const staffIds = staff.map((s) => s.id);
+    const numStaff = staffIds.length;
+
+    if (numStaff < 6) {
+      toast({
+        variant: "destructive",
+        title: "スタッフ不足",
+        description: "自動作成には最低6人のスタッフが必要です。",
+      });
+      return;
+    }
+
+    const newCellShifts: { [staffId: string]: (ShiftType | null)[] } = {};
+    staff.forEach((member) => {
+      newCellShifts[member.id] = Array(daysInMonth).fill(null);
+    });
+
+    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+      const shiftsForDay: ShiftType[] = [];
+      for (let i = 0; i < 3; i++) shiftsForDay.push("early");
+      for (let i = 0; i < 3; i++) shiftsForDay.push("late");
+
+      const remainingSlots = numStaff - 6;
+      for (let i = 0; i < remainingSlots; i++) {
+        shiftsForDay.push(Math.random() < 0.5 ? "early" : "late");
+      }
+
+      const shuffledShifts = [...shiftsForDay].sort(() => Math.random() - 0.5);
+      const shuffledStaffIds = [...staffIds].sort(() => Math.random() - 0.5);
+
+      for (let i = 0; i < numStaff; i++) {
+        const staffId = shuffledStaffIds[i];
+        newCellShifts[staffId][dayIdx] = shuffledShifts[i];
+      }
+    }
+
+    cellShiftsRef.current = newCellShifts;
+    forceUpdate();
+    toast({
+      title: "シフト自動作成完了",
+      description: "シフト案が作成されました。内容を確認して保存してください。",
+    });
+  }, [staff, daysInMonth, toast]);
+
   // シフトタイプの検索を最適化
   const getShiftTypeInfo = useCallback(
     (shiftType: ShiftType | null): (typeof shiftTypes)[number] | null => {
@@ -685,6 +730,13 @@ export default function AdminCreateShiftPage() {
                   aria-pressed={multiSelectMode}
                 >
                   {multiSelectMode ? "複数選択モード中" : "複数選択モード"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAutoGenerateShifts}
+                >
+                  自動作成
                 </Button>
                 {multiSelectMode && (
                   <span className="text-xs text-muted-foreground">
