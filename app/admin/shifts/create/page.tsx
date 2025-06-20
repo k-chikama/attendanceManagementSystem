@@ -1309,10 +1309,6 @@ export default function AdminCreateShiftPage() {
             </div>
             <CardDescription>
               セルをクリックしてシフト種別を選択し、登録ボタンで保存してください。
-              <br />
-              <span className="text-yellow-800 bg-yellow-100 px-2 py-1 rounded text-xs">
-                黄色の日付は土日祝日・8のつく日（6人以上確保）
-              </span>
             </CardDescription>
           </CardHeader>
           <CardContent>
