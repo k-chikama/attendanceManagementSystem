@@ -675,38 +675,36 @@ export default function AdminCreateShiftPage() {
                                     )}
                                   </button>
                                 </PopoverTrigger>
-                                <Popover.Portal>
-                                  <PopoverContent
-                                    align="center"
-                                    side="top"
-                                    sideOffset={4}
-                                    style={{ zIndex: 99999 }}
-                                  >
-                                    <div className="grid grid-cols-2 gap-2">
-                                      {shiftTypes.map((type) => (
-                                        <button
-                                          key={type.id}
-                                          type="button"
-                                          onClick={() => {
-                                            handleSelectShiftType(type.id);
-                                            setPopover(null);
-                                          }}
-                                        >
-                                          {type.name}
-                                        </button>
-                                      ))}
+                                <PopoverContent
+                                  align="center"
+                                  side="top"
+                                  sideOffset={4}
+                                  style={{ zIndex: 99999 }}
+                                >
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {shiftTypes.map((type) => (
                                       <button
+                                        key={type.id}
                                         type="button"
                                         onClick={() => {
-                                          handleSelectShiftType(null);
+                                          handleSelectShiftType(type.id);
                                           setPopover(null);
                                         }}
                                       >
-                                        クリア
+                                        {type.name}
                                       </button>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover.Portal>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleSelectShiftType(null);
+                                        setPopover(null);
+                                      }}
+                                    >
+                                      クリア
+                                    </button>
+                                  </div>
+                                </PopoverContent>
                               </Popover>
                             </div>
                           </td>
@@ -821,38 +819,36 @@ export default function AdminCreateShiftPage() {
                                       )}
                                     </button>
                                   </PopoverTrigger>
-                                  <Popover.Portal>
-                                    <PopoverContent
-                                      align="center"
-                                      side="top"
-                                      sideOffset={4}
-                                      style={{ zIndex: 99999 }}
-                                    >
-                                      <div className="grid grid-cols-2 gap-2">
-                                        {shiftTypes.map((type) => (
-                                          <button
-                                            key={type.id}
-                                            type="button"
-                                            onClick={() => {
-                                              handleSelectShiftType(type.id);
-                                              setPopover(null);
-                                            }}
-                                          >
-                                            {type.name}
-                                          </button>
-                                        ))}
+                                  <PopoverContent
+                                    align="center"
+                                    side="top"
+                                    sideOffset={4}
+                                    style={{ zIndex: 99999 }}
+                                  >
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {shiftTypes.map((type) => (
                                         <button
+                                          key={type.id}
                                           type="button"
                                           onClick={() => {
-                                            handleSelectShiftType(null);
+                                            handleSelectShiftType(type.id);
                                             setPopover(null);
                                           }}
                                         >
-                                          クリア
+                                          {type.name}
                                         </button>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover.Portal>
+                                      ))}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleSelectShiftType(null);
+                                          setPopover(null);
+                                        }}
+                                      >
+                                        クリア
+                                      </button>
+                                    </div>
+                                  </PopoverContent>
                                 </Popover>
                               </div>
                             </td>
