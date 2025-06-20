@@ -396,8 +396,8 @@ const checkConsecutiveWorkDays = (
   return totalConsecutive <= maxConsecutive;
 };
 
-// 連続勤務日数を減らすためのスワップ関数（シングルスワップ）
-const reduceConsecutiveWorkDays_singlePersonSwap = (
+// 連続勤務日数を減らすためのスワップ関数
+const reduceConsecutiveWorkDays = (
   shifts: { [staffId: string]: (ShiftType | null)[] },
   staffIds: string[],
   month: Date,
@@ -447,45 +447,15 @@ const reduceConsecutiveWorkDays_singlePersonSwap = (
             }
 
             if (isTargetDayValid) {
-              shifts[staffId][sourceDay] = "dayoff";
-              shifts[staffId][targetDay] = originalShiftType;
-              return true;
-            }
-          }
-        }
-      }
-    }
-  }
-  return false;
-};
+              // 副作用チェック：このスワップで新たな連勤が発生しないか
+              const tempShifts = JSON.parse(JSON.stringify(shifts));
+              tempShifts[staffId][sourceDay] = "dayoff";
+              tempShifts[staffId][targetDay] = originalShiftType;
 
-// 連続勤務日数を減らすためのスワップ関数（4者間スワップ）
-const reduceConsecutiveWorkDays_fourWaySwap = (
-  shifts: { [staffId: string]: (ShiftType | null)[] },
-  staffIds: string[],
-  daysInMonth: number
-): boolean => {
-  for (const staffA of staffIds) {
-    for (let dayX = 0; dayX < daysInMonth; dayX++) {
-      if (
-        shifts[staffA][dayX] &&
-        shifts[staffA][dayX] !== "dayoff" &&
-        shifts[staffA][dayX] !== "al" &&
-        !checkConsecutiveWorkDays(shifts, staffA, dayX, 4)
-      ) {
-        const shiftTypeOfStaffA = shifts[staffA][dayX];
-        for (let dayY = 0; dayY < daysInMonth; dayY++) {
-          if (shifts[staffA][dayY] === "dayoff") {
-            for (const staffB of staffIds) {
-              if (
-                staffA !== staffB &&
-                shifts[staffB][dayX] === "dayoff" &&
-                shifts[staffB][dayY] === shiftTypeOfStaffA
-              ) {
-                shifts[staffA][dayX] = "dayoff";
-                shifts[staffA][dayY] = shiftTypeOfStaffA;
-                shifts[staffB][dayY] = "dayoff";
-                shifts[staffB][dayX] = shiftTypeOfStaffA;
+              if (checkConsecutiveWorkDays(tempShifts, staffId, targetDay, 4)) {
+                // 安全なスワップを実行
+                shifts[staffId][sourceDay] = "dayoff";
+                shifts[staffId][targetDay] = originalShiftType;
                 return true;
               }
             }
@@ -1019,28 +989,17 @@ export default function AdminCreateShiftPage() {
         }
       }
 
-      // Phase 4: 連続勤務日数の最終調整（5連勤以上を防ぐ）
+      // Phase 5: 連続勤務日数の最終調整（5連勤以上を防ぐ）
       let consecutiveAdjustmentsMade = true;
-      let consecutiveMaxIterations = 50; // さらに試行回数を増やす
+      let consecutiveMaxIterations = 50; // 試行回数を増やす
 
       while (consecutiveAdjustmentsMade && consecutiveMaxIterations > 0) {
-        // まずシングルスワップを試す
-        consecutiveAdjustmentsMade = reduceConsecutiveWorkDays_singlePersonSwap(
+        consecutiveAdjustmentsMade = reduceConsecutiveWorkDays(
           newCellShifts,
           staffIds,
           month,
           daysInMonth
         );
-
-        // シングルスワップで解決できなければ4者間スワップを試す
-        if (!consecutiveAdjustmentsMade) {
-          consecutiveAdjustmentsMade = reduceConsecutiveWorkDays_fourWaySwap(
-            newCellShifts,
-            staffIds,
-            daysInMonth
-          );
-        }
-
         consecutiveMaxIterations--;
       }
 
