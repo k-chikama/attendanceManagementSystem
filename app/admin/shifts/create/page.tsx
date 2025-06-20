@@ -638,114 +638,63 @@ export default function AdminCreateShiftPage() {
       return;
     }
 
-    const MAX_ATTEMPTS = 50;
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const newCellShifts: {
-        [staffId: string]: (ShiftType | "work" | null)[];
-      } = {};
-      let success = true;
+    if (daysInMonth < 8) {
+      toast({
+        variant: "destructive",
+        title: "作成不可",
+        description: `月の日数が${daysInMonth}日のため、8日間の休みを確保できません。`,
+      });
+      return;
+    }
 
-      // Phase 1: Assign days off for each staff member
-      for (const staffId of staffIds) {
-        newCellShifts[staffId] = Array(daysInMonth).fill("work");
-        let daysOffToAssign = 8;
-        let consecutiveWork = 0;
+    const newCellShifts: {
+      [staffId: string]: (ShiftType | null)[];
+    } = {};
 
-        for (let day = 0; day < daysInMonth; day++) {
-          let daysLeft = daysInMonth - day;
-          if (consecutiveWork === 4 && daysOffToAssign > 0) {
-            newCellShifts[staffId][day] = "dayoff";
-            daysOffToAssign--;
-            consecutiveWork = 0;
-          } else if (daysOffToAssign === daysLeft) {
-            newCellShifts[staffId][day] = "dayoff";
-            daysOffToAssign--;
-            consecutiveWork = 0;
-          } else {
-            consecutiveWork++;
-          }
-        }
+    // Phase 1: Fill all days with early and late shifts (minimum 3 each)
+    for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+      const shiftsForDay: ShiftType[] = [];
 
-        // Assign remaining days off randomly
-        let workDays = [];
-        for (let i = 0; i < daysInMonth; i++) {
-          if (newCellShifts[staffId][i] === "work") workDays.push(i);
-        }
+      // Ensure minimum 3 early and 3 late shifts
+      for (let i = 0; i < 3; i++) shiftsForDay.push("early");
+      for (let i = 0; i < 3; i++) shiftsForDay.push("late");
 
-        if (workDays.length < daysOffToAssign) {
-          // Should not happen with this logic, but as a safeguard
-          success = false;
-          break;
-        }
-
-        workDays.sort(() => Math.random() - 0.5); // Shuffle workdays
-
-        for (let i = 0; i < daysOffToAssign; i++) {
-          const dayToMakeOff = workDays[i];
-          newCellShifts[staffId][dayToMakeOff] = "dayoff";
-        }
-
-        // Final check for 4+ consecutive days
-        let currentConsecutive = 0;
-        for (let day = 0; day < daysInMonth; day++) {
-          if (newCellShifts[staffId][day] !== "dayoff") {
-            currentConsecutive++;
-          } else {
-            currentConsecutive = 0;
-          }
-          if (currentConsecutive > 4) {
-            success = false;
-            break;
-          }
-        }
-        if (!success) break;
-      }
-      if (!success) continue;
-
-      // Phase 2: Fill workdays with 'early' and 'late' shifts
-      for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
-        const workingStaff = staffIds.filter(
-          (id) => newCellShifts[id][dayIdx] === "work"
-        );
-        if (workingStaff.length < 6) {
-          success = false;
-          break;
-        }
-
-        const shiftsForDay: ShiftType[] = [];
-        for (let i = 0; i < 3; i++) shiftsForDay.push("early");
-        for (let i = 0; i < 3; i++) shiftsForDay.push("late");
-
-        const remainingSlots = workingStaff.length - 6;
-        for (let i = 0; i < remainingSlots; i++) {
-          shiftsForDay.push(Math.random() < 0.5 ? "early" : "late");
-        }
-        shiftsForDay.sort(() => Math.random() - 0.5);
-
-        workingStaff.forEach((staffId, i) => {
-          newCellShifts[staffId][dayIdx] = shiftsForDay[i];
-        });
+      // Fill remaining slots randomly
+      const remainingSlots = numStaff - 6;
+      for (let i = 0; i < remainingSlots; i++) {
+        shiftsForDay.push(Math.random() < 0.5 ? "early" : "late");
       }
 
-      if (success) {
-        cellShiftsRef.current = newCellShifts as {
-          [staffId: string]: (ShiftType | null)[];
-        };
-        forceUpdate();
-        toast({
-          title: "シフト自動作成完了",
-          description:
-            "シフト案が作成されました。内容を確認して保存してください。",
-        });
-        return;
+      // Shuffle the shifts
+      shiftsForDay.sort(() => Math.random() - 0.5);
+
+      // Assign to each staff member
+      staffIds.forEach((staffId, i) => {
+        if (!newCellShifts[staffId]) {
+          newCellShifts[staffId] = Array(daysInMonth).fill(null);
+        }
+        newCellShifts[staffId][dayIdx] = shiftsForDay[i];
+      });
+    }
+
+    // Phase 2: Randomly assign 8 days off for each staff member
+    for (const staffId of staffIds) {
+      const dayIndexes = Array.from({ length: daysInMonth }, (_, i) => i);
+      dayIndexes.sort(() => Math.random() - 0.5);
+
+      // Assign first 8 random days as dayoff
+      for (let i = 0; i < 8; i++) {
+        newCellShifts[staffId][dayIndexes[i]] = "dayoff";
       }
     }
 
+    // Apply the generated shifts
+    cellShiftsRef.current = newCellShifts;
+    forceUpdate();
+
     toast({
-      variant: "destructive",
-      title: "自動作成失敗",
-      description:
-        "条件を満たすシフトを作成できませんでした。もう一度お試しください。",
+      title: "シフト自動作成完了",
+      description: "シフト案が作成されました。内容を確認して保存してください。",
     });
   }, [staff, daysInMonth, toast]);
 
