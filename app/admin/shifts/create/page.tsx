@@ -989,7 +989,7 @@ export default function AdminCreateShiftPage() {
         }
       }
 
-      // Phase 5: 連続勤務日数の最終調整（5連勤以上を防ぐ）
+      // Phase 4: 連続勤務日数の調整（5連勤以上を防ぐ）
       let consecutiveAdjustmentsMade = true;
       let consecutiveMaxIterations = 50; // 試行回数を増やす
 
@@ -1001,6 +1001,51 @@ export default function AdminCreateShiftPage() {
           daysInMonth
         );
         consecutiveMaxIterations--;
+      }
+
+      // Phase 5: 早番・遅番の比率調整
+      for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+        const workingStaffIds = staffIds.filter(
+          (id) => newCellShifts[id][dayIdx] !== "dayoff"
+        );
+        const workingStaffCount = workingStaffIds.length;
+
+        if (workingStaffCount === 0) continue;
+
+        const earlyStaffIds = workingStaffIds.filter(
+          (id) => newCellShifts[id][dayIdx] === "early"
+        );
+        const lateStaffIds = workingStaffIds.filter(
+          (id) => newCellShifts[id][dayIdx] === "late"
+        );
+        const earlyStaffCount = earlyStaffIds.length;
+        const lateStaffCount = lateStaffIds.length;
+        const minEarly = Math.max(2, Math.floor(workingStaffCount * 0.4));
+        const minLate = Math.max(2, Math.floor(workingStaffCount * 0.4));
+
+        // 早番が多すぎる場合（遅番が不足）
+        if (earlyStaffCount > minEarly && lateStaffCount < minLate) {
+          const excessEarly = earlyStaffCount - minEarly;
+          const neededLate = minLate - lateStaffCount;
+          const changeCount = Math.min(excessEarly, neededLate);
+
+          // 早番のスタッフを遅番に変更
+          for (let i = 0; i < changeCount; i++) {
+            newCellShifts[earlyStaffIds[i]][dayIdx] = "late";
+          }
+        }
+
+        // 遅番が多すぎる場合（早番が不足）
+        if (lateStaffCount > minLate && earlyStaffCount < minEarly) {
+          const excessLate = lateStaffCount - minLate;
+          const neededEarly = minEarly - earlyStaffCount;
+          const changeCount = Math.min(excessLate, neededEarly);
+
+          // 遅番のスタッフを早番に変更
+          for (let i = 0; i < changeCount; i++) {
+            newCellShifts[lateStaffIds[i]][dayIdx] = "early";
+          }
+        }
       }
 
       // Apply the generated shifts
