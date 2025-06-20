@@ -97,6 +97,47 @@ const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => {
   return `${hour}:00`;
 });
 
+// 祝日判定用の簡易的な関数（実際の運用では祝日APIを使用することを推奨）
+const isHoliday = (date: Date): boolean => {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  // 日本の主要な祝日（簡易版）
+  const holidays = [
+    { month: 1, day: 1 }, // 元日
+    { month: 1, day: 9 }, // 成人の日（第2月曜日）
+    { month: 2, day: 11 }, // 建国記念の日
+    { month: 2, day: 23 }, // 天皇誕生日
+    { month: 3, day: 21 }, // 春分の日
+    { month: 4, day: 29 }, // 昭和の日
+    { month: 5, day: 3 }, // 憲法記念日
+    { month: 5, day: 4 }, // みどりの日
+    { month: 5, day: 5 }, // こどもの日
+    { month: 7, day: 17 }, // 海の日
+    { month: 8, day: 11 }, // 山の日
+    { month: 9, day: 18 }, // 敬老の日
+    { month: 9, day: 23 }, // 秋分の日
+    { month: 10, day: 9 }, // スポーツの日
+    { month: 11, day: 3 }, // 文化の日
+    { month: 11, day: 23 }, // 勤労感謝の日
+  ];
+
+  return holidays.some((h) => h.month === month && h.day === day);
+};
+
+// 8のつく日かどうかを判定
+const hasDateWith8 = (date: Date): boolean => {
+  const day = date.getDate();
+  return day === 8 || day === 18 || day === 28;
+};
+
+// 土日祝日・8のつく日かどうかを判定
+const isSpecialDay = (date: Date): boolean => {
+  const dayOfWeek = date.getDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // 日曜日(0)または土曜日(6)
+  return isWeekend || isHoliday(date) || hasDateWith8(date);
+};
+
 // シフトタイプの定義
 const shiftTypes = [
   {
@@ -737,6 +778,88 @@ export default function AdminCreateShiftPage() {
       }
 
       if (success) {
+        // Phase 3: Adjust staff count for weekdays vs special days
+        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+          const currentDate = addDays(month, dayIdx);
+          const isSpecial = isSpecialDay(currentDate);
+          const workingStaff = staffIds.filter(
+            (id) => newCellShifts[id][dayIdx] !== "dayoff"
+          );
+
+          if (isSpecial) {
+            // 土日祝日・8のつく日は6人以上確保
+            if (workingStaff.length < 6) {
+              const neededStaff = 6 - workingStaff.length;
+              const staffWithDayOff = staffIds.filter(
+                (id) => newCellShifts[id][dayIdx] === "dayoff"
+              );
+
+              // 他の日の休みとスワップ
+              for (
+                let i = 0;
+                i < neededStaff && i < staffWithDayOff.length;
+                i++
+              ) {
+                const staffToSwap = staffWithDayOff[i];
+
+                // このスタッフの他の勤務日を探して休みとスワップ
+                for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
+                  if (
+                    otherDay !== dayIdx &&
+                    newCellShifts[staffToSwap][otherDay] !== "dayoff"
+                  ) {
+                    const otherDate = addDays(month, otherDay);
+                    const otherIsSpecial = isSpecialDay(otherDate);
+                    const otherWorkingStaff = staffIds.filter(
+                      (id) => newCellShifts[id][otherDay] !== "dayoff"
+                    );
+
+                    // 平日で4人以上いる場合はスワップ可能
+                    if (!otherIsSpecial && otherWorkingStaff.length > 4) {
+                      // スワップ実行
+                      newCellShifts[staffToSwap][dayIdx] =
+                        newCellShifts[staffToSwap][otherDay];
+                      newCellShifts[staffToSwap][otherDay] = "dayoff";
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          } else {
+            // 平日は4人固定
+            if (workingStaff.length > 4) {
+              const excessStaff = workingStaff.length - 4;
+              const staffToMakeOff = workingStaff.slice(0, excessStaff);
+
+              // 土日祝日・8のつく日で6人未満の日を探してスワップ
+              for (const staffId of staffToMakeOff) {
+                for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
+                  if (otherDay !== dayIdx) {
+                    const otherDate = addDays(month, otherDay);
+                    const otherIsSpecial = isSpecialDay(otherDate);
+                    const otherWorkingStaff = staffIds.filter(
+                      (id) => newCellShifts[id][otherDay] !== "dayoff"
+                    );
+
+                    // 土日祝日・8のつく日で6人未満の場合はスワップ可能
+                    if (
+                      otherIsSpecial &&
+                      otherWorkingStaff.length < 6 &&
+                      newCellShifts[staffId][otherDay] === "dayoff"
+                    ) {
+                      // スワップ実行
+                      newCellShifts[staffId][dayIdx] = "dayoff";
+                      newCellShifts[staffId][otherDay] = "early"; // または "late"
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
         // Apply the generated shifts
         cellShiftsRef.current = newCellShifts;
         forceUpdate();
