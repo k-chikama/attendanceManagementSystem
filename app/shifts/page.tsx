@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -144,8 +144,7 @@ function TodayShifts({
                   あなたのシフト
                 </p>
                 <div className="flex items-center gap-2">
-                  <ShiftBadge type={currentUserShift} />
-                  <span className="text-sm">
+                  <span className="text-sm font-bold">
                     {currentUserShift || "未設定"}
                   </span>
                 </div>
@@ -157,19 +156,14 @@ function TodayShifts({
                   勤務スタッフ ({workingStaff.length}人)
                 </p>
                 <div className="flex flex-wrap gap-1">
-                  {workingStaff.slice(0, 3).map((staff) => (
+                  {workingStaff.map((staff) => (
                     <span
-                      key={staff.uid}
+                      key={staff.id || staff.uid}
                       className="inline-block px-2 py-1 bg-muted text-xs rounded"
                     >
                       {staff.name}
                     </span>
                   ))}
-                  {workingStaff.length > 3 && (
-                    <span className="inline-block px-2 py-1 bg-muted text-xs rounded">
-                      +{workingStaff.length - 3}人
-                    </span>
-                  )}
                 </div>
               </div>
             </Card>
@@ -209,10 +203,10 @@ export default function ShiftsPage() {
       }
     };
     loadData();
-  }, [user, toast]);
+  }, [user, toast, currentDate]);
 
   // 月の日付を生成
-  const monthDates = useState(() => {
+  const monthDates = useMemo(() => {
     const start = startOfMonth(currentDate);
     const end = endOfMonth(currentDate);
     return eachDayOfInterval({ start, end }).map((date) => ({
@@ -220,7 +214,7 @@ export default function ShiftsPage() {
       display: format(date, "M/d", { locale: ja }),
       day: format(date, "E", { locale: ja }),
     }));
-  })[0];
+  }, [currentDate]);
 
   // 日付×ユーザーごとに該当シフトを取得
   function findShift(userId: string, date: string): any | undefined {
@@ -318,14 +312,7 @@ export default function ShiftsPage() {
                         {users.map((member) => (
                           <tr key={member.id || member.uid} className="h-12">
                             <td className="border bg-background sticky left-0 z-10 text-left font-bold px-3 py-2 min-w-[120px]">
-                              <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                  <span className="text-xs font-bold">
-                                    {member.name.charAt(0)}
-                                  </span>
-                                </div>
-                                <span className="text-sm">{member.name}</span>
-                              </div>
+                              <span className="text-sm">{member.name}</span>
                             </td>
                             {monthDates.map(({ date }, dayIdx) => {
                               const shift = findShift(
@@ -435,14 +422,8 @@ export default function ShiftsPage() {
                     <table className="min-w-[800px] w-full border text-center text-xs align-middle">
                       <thead className="sticky top-0 z-20">
                         <tr>
-                          <th className="border bg-muted px-3 py-2 sticky left-0 z-10 text-left min-w-[120px] font-bold">
-                            日付
-                          </th>
                           <th className="border bg-muted px-2 py-2 text-xs font-normal min-w-[100px] text-center">
                             シフト
-                          </th>
-                          <th className="border bg-muted px-2 py-2 text-xs font-normal min-w-[100px] text-center">
-                            勤務時間
                           </th>
                         </tr>
                       </thead>
@@ -481,11 +462,6 @@ export default function ShiftsPage() {
                                     shift ? shift.type : undefined
                                   )}
                                 />
-                              </td>
-                              <td className="border px-2 py-2 align-middle min-w-[100px] text-sm">
-                                {shift?.startTime && shift?.endTime
-                                  ? `${shift.startTime} - ${shift.endTime}`
-                                  : "-"}
                               </td>
                             </tr>
                           );
@@ -533,11 +509,6 @@ export default function ShiftsPage() {
                                   shift ? shift.type : undefined
                                 )}
                               />
-                              <span className="text-sm">
-                                {shift?.startTime && shift?.endTime
-                                  ? `${shift.startTime} - ${shift.endTime}`
-                                  : "時間未設定"}
-                              </span>
                             </div>
                           </Card>
                         );
