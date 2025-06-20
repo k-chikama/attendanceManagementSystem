@@ -876,6 +876,87 @@ export default function AdminCreateShiftPage() {
         }
       }
 
+      // Phase 4: Adjust early/late shift counts for each day
+      let shiftAdjustmentsMade = true;
+      let maxShiftIterations = 10;
+
+      while (shiftAdjustmentsMade && maxShiftIterations > 0) {
+        shiftAdjustmentsMade = false;
+        maxShiftIterations--;
+
+        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+          const currentDate = addDays(month, dayIdx);
+          const isSpecial = isSpecialDay(currentDate);
+          const workingStaff = staffIds.filter(
+            (id) => newCellShifts[id][dayIdx] !== "dayoff"
+          );
+
+          const earlyStaff = workingStaff.filter(
+            (id) => newCellShifts[id][dayIdx] === "early"
+          );
+          const lateStaff = workingStaff.filter(
+            (id) => newCellShifts[id][dayIdx] === "late"
+          );
+
+          const minEarly = isSpecial ? 3 : 2;
+          const minLate = isSpecial ? 3 : 2;
+
+          // 早番の調整
+          if (earlyStaff.length < minEarly) {
+            const neededEarly = minEarly - earlyStaff.length;
+            const lateStaffToSwap = lateStaff.slice(0, neededEarly);
+
+            for (const staffId of lateStaffToSwap) {
+              newCellShifts[staffId][dayIdx] = "early";
+              shiftAdjustmentsMade = true;
+            }
+          } else if (
+            earlyStaff.length > minEarly &&
+            lateStaff.length < minLate
+          ) {
+            // 早番が多すぎて遅番が足りない場合
+            const excessEarly = earlyStaff.length - minEarly;
+            const neededLate = minLate - lateStaff.length;
+            const staffToSwap = earlyStaff.slice(
+              0,
+              Math.min(excessEarly, neededLate)
+            );
+
+            for (const staffId of staffToSwap) {
+              newCellShifts[staffId][dayIdx] = "late";
+              shiftAdjustmentsMade = true;
+            }
+          }
+
+          // 遅番の調整
+          if (lateStaff.length < minLate) {
+            const neededLate = minLate - lateStaff.length;
+            const earlyStaffToSwap = earlyStaff.slice(0, neededLate);
+
+            for (const staffId of earlyStaffToSwap) {
+              newCellShifts[staffId][dayIdx] = "late";
+              shiftAdjustmentsMade = true;
+            }
+          } else if (
+            lateStaff.length > minLate &&
+            earlyStaff.length < minEarly
+          ) {
+            // 遅番が多すぎて早番が足りない場合
+            const excessLate = lateStaff.length - minLate;
+            const neededEarly = minEarly - earlyStaff.length;
+            const staffToSwap = lateStaff.slice(
+              0,
+              Math.min(excessLate, neededEarly)
+            );
+
+            for (const staffId of staffToSwap) {
+              newCellShifts[staffId][dayIdx] = "early";
+              shiftAdjustmentsMade = true;
+            }
+          }
+        }
+      }
+
       // Apply the generated shifts
       cellShiftsRef.current = newCellShifts;
       forceUpdate();
