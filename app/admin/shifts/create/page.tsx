@@ -302,7 +302,18 @@ const ShiftCell = ({
         )}
       >
         {multiSelectMode ? (
-          <div className="w-full h-full" />
+          shiftTypeInfo ? (
+            <span
+              className={cn(
+                "font-bold px-1 py-1 rounded text-center",
+                isMobile ? "text-xs" : "text-xs"
+              )}
+            >
+              {shiftTypeInfo.name}
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-[10px]">-</span>
+          )
         ) : (
           <Popover>
             <PopoverTrigger asChild>
