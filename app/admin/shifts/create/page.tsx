@@ -1294,7 +1294,10 @@ export default function AdminCreateShiftPage() {
                     size="sm"
                     onClick={() => setMultiSelectMode((v) => !v)}
                     aria-pressed={multiSelectMode}
-                    className="h-8 px-2 text-xs"
+                    className={cn(
+                      "h-8 px-2 text-xs",
+                      multiSelectMode && "text-primary-foreground"
+                    )}
                   >
                     {multiSelectMode ? "複数選択中" : "複数選択"}
                   </Button>
