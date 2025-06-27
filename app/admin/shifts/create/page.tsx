@@ -371,7 +371,7 @@ const checkConsecutiveWorkDays = (
   shifts: { [staffId: string]: (ShiftType | null)[] },
   staffId: string,
   dayIdx: number,
-  maxConsecutive: number = 4
+  maxConsecutive: number = 5
 ): boolean => {
   const staffShifts = shifts[staffId];
   if (!staffShifts) return true;
@@ -451,7 +451,7 @@ const reduceConsecutiveWorkDays = (
         shifts[staffId][dayIdx] &&
         shifts[staffId][dayIdx] !== "dayoff" &&
         shifts[staffId][dayIdx] !== "al" &&
-        !checkConsecutiveWorkDays(shifts, staffId, dayIdx, 4)
+        !checkConsecutiveWorkDays(shifts, staffId, dayIdx, 5)
       ) {
         const sourceDay = dayIdx;
         const originalShiftType = shifts[staffId][sourceDay];
@@ -499,7 +499,7 @@ const reduceConsecutiveWorkDays = (
                 tempShifts,
                 staffId,
                 targetDay,
-                4
+                5
               );
 
               // 2. スワップ後の早番/遅番比率が崩れないか
