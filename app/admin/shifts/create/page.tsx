@@ -371,7 +371,7 @@ const checkConsecutiveWorkDays = (
   shifts: { [staffId: string]: (ShiftType | null)[] },
   staffId: string,
   dayIdx: number,
-  maxConsecutive: number = 5
+  maxConsecutive: number = 4
 ): boolean => {
   const staffShifts = shifts[staffId];
   if (!staffShifts) return true;
@@ -451,7 +451,7 @@ const reduceConsecutiveWorkDays = (
         shifts[staffId][dayIdx] &&
         shifts[staffId][dayIdx] !== "dayoff" &&
         shifts[staffId][dayIdx] !== "al" &&
-        !checkConsecutiveWorkDays(shifts, staffId, dayIdx, 5)
+        !checkConsecutiveWorkDays(shifts, staffId, dayIdx, 4)
       ) {
         const sourceDay = dayIdx;
         const originalShiftType = shifts[staffId][sourceDay];
@@ -499,7 +499,7 @@ const reduceConsecutiveWorkDays = (
                 tempShifts,
                 staffId,
                 targetDay,
-                5
+                4
               );
 
               // 2. スワップ後の早番/遅番比率が崩れないか
@@ -1104,9 +1104,9 @@ export default function AdminCreateShiftPage() {
           }
         }
 
-        // Phase 2.5: 6連勤以上が発生した場合の休み位置調整
+        // Phase 2.5: 5連勤以上が発生した場合の休み位置調整
         let dayOffAdjustmentsMade = true;
-        let dayOffMaxIterations = 20;
+        let dayOffMaxIterations = 30; // 試行回数を増やす
         while (dayOffAdjustmentsMade && dayOffMaxIterations > 0) {
           dayOffAdjustmentsMade = false;
           dayOffMaxIterations--;
@@ -1138,8 +1138,8 @@ export default function AdminCreateShiftPage() {
               maxConsecutiveStart = daysInMonth - consecutiveCount;
             }
 
-            // 6連勤以上が発生している場合、休みを挿入
-            if (maxConsecutive >= 6) {
+            // 5連勤以上が発生している場合、休みを挿入
+            if (maxConsecutive >= 5) {
               // 連続勤務の真ん中あたりに休みを挿入
               const insertDay =
                 maxConsecutiveStart + Math.floor(maxConsecutive / 2);
@@ -1287,7 +1287,8 @@ export default function AdminCreateShiftPage() {
                         const otherWorkingStaff = staffIds.filter(
                           (id) => newCellShifts[id][otherDay] !== "dayoff"
                         );
-                        if (otherIsSpecial && otherWorkingStaff.length > 5) {
+                        // 平日で4人以上いる場合はスワップ可能
+                        if (!otherIsSpecial && otherWorkingStaff.length > 5) {
                           const tempShift = newCellShifts[staffToMove][dayIdx];
                           newCellShifts[staffToMove][dayIdx] =
                             newCellShifts[staffToMove][otherDay];
@@ -1304,9 +1305,9 @@ export default function AdminCreateShiftPage() {
             }
           }
         }
-        // Phase 4: 連続勤務日数の調整（5連勤以上を防ぐ）
+        // Phase 4: 連続勤務日数の調整（4連勤までに制限）
         let consecutiveAdjustmentsMade = true;
-        let consecutiveMaxIterations = 50;
+        let consecutiveMaxIterations = 100; // 試行回数を大幅に増やす
         while (consecutiveAdjustmentsMade && consecutiveMaxIterations > 0) {
           consecutiveAdjustmentsMade = reduceConsecutiveWorkDays(
             newCellShifts,
@@ -1625,10 +1626,9 @@ export default function AdminCreateShiftPage() {
         }
       }
 
-      // Phase 4: 連続勤務日数の調整（5連勤以上を防ぐ）
+      // Phase 4: 連続勤務日数の調整（4連勤までに制限）
       let consecutiveAdjustmentsMade = true;
-      let consecutiveMaxIterations = 50; // 試行回数を増やす
-
+      let consecutiveMaxIterations = 100; // 試行回数を大幅に増やす
       while (consecutiveAdjustmentsMade && consecutiveMaxIterations > 0) {
         consecutiveAdjustmentsMade = reduceConsecutiveWorkDays(
           newCellShifts,
