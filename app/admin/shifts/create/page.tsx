@@ -556,6 +556,7 @@ const validateAllShifts = (
 
     // 5連勤以上の検証
     let consecutiveCount = 0;
+    let fiveConsecutiveCount = 0;
     for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
       if (
         staffShifts[dayIdx] &&
@@ -564,18 +565,36 @@ const validateAllShifts = (
       ) {
         consecutiveCount++;
       } else {
-        consecutiveCount = 0;
-      }
-      if (consecutiveCount > 4) {
         if (consecutiveCount === 5) {
+          fiveConsecutiveCount++;
+        }
+        if (consecutiveCount > 5) {
           warnings.push(
             `${member.name}: ${format(
-              addDays(month, dayIdx - 4),
+              addDays(month, dayIdx - consecutiveCount),
               "M/d"
-            )}から5連勤以上になっています。`
+            )}から${consecutiveCount}連勤になっています（6連勤以上は禁止です）。`
           );
         }
+        consecutiveCount = 0;
       }
+    }
+    // 月末が連勤で終わる場合も考慮
+    if (consecutiveCount === 5) {
+      fiveConsecutiveCount++;
+    }
+    if (consecutiveCount > 5) {
+      warnings.push(
+        `${member.name}: ${format(
+          addDays(month, daysInMonth - consecutiveCount),
+          "M/d"
+        )}から${consecutiveCount}連勤になっています（6連勤以上は禁止です）。`
+      );
+    }
+    if (fiveConsecutiveCount > 1) {
+      warnings.push(
+        `${member.name}: 5連勤が${fiveConsecutiveCount}回あります（月1回まで許可）。`
+      );
     }
   });
 
