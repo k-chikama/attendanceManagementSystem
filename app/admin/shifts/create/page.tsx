@@ -1184,52 +1184,83 @@ export default function AdminCreateShiftPage() {
           const earlyStaffCount = earlyStaffIds.length;
           const lateStaffCount = lateStaffIds.length;
           const isSpecial = isSpecialDay(addDays(month, dayIdx));
-          if (isSpecial) {
-            // 特別日は早番・遅番が最低2人以上
-            if (earlyStaffCount < 2) {
-              for (
-                let i = 0;
-                i < workingStaffIds.length && earlyStaffCount < 2;
-                i++
-              ) {
-                if (newCellShifts[workingStaffIds[i]][dayIdx] === "late") {
-                  newCellShifts[workingStaffIds[i]][dayIdx] = "early";
+          if (staffIds.length === 6) {
+            // 6人用ロジック
+            if (isSpecial) {
+              // 特別日は早番2人未満なら遅番→早番に
+              if (earlyStaffCount < 2) {
+                for (
+                  let i = 0;
+                  i < workingStaffIds.length && earlyStaffIds.length < 2;
+                  i++
+                ) {
+                  if (newCellShifts[workingStaffIds[i]][dayIdx] === "late") {
+                    newCellShifts[workingStaffIds[i]][dayIdx] = "early";
+                    earlyStaffIds.push(workingStaffIds[i]);
+                  }
                 }
               }
-            }
-            if (lateStaffCount < 2) {
-              for (
-                let i = 0;
-                i < workingStaffIds.length && lateStaffCount < 2;
-                i++
-              ) {
-                if (newCellShifts[workingStaffIds[i]][dayIdx] === "early") {
-                  newCellShifts[workingStaffIds[i]][dayIdx] = "late";
+              // 特別日は遅番2人未満なら早番→遅番に
+              if (lateStaffCount < 2) {
+                for (
+                  let i = 0;
+                  i < workingStaffIds.length && lateStaffIds.length < 2;
+                  i++
+                ) {
+                  if (newCellShifts[workingStaffIds[i]][dayIdx] === "early") {
+                    newCellShifts[workingStaffIds[i]][dayIdx] = "late";
+                    lateStaffIds.push(workingStaffIds[i]);
+                  }
+                }
+              }
+            } else {
+              // 平日は早番1人未満なら遅番→早番に
+              if (earlyStaffCount < 1) {
+                for (
+                  let i = 0;
+                  i < workingStaffIds.length && earlyStaffIds.length < 1;
+                  i++
+                ) {
+                  if (newCellShifts[workingStaffIds[i]][dayIdx] === "late") {
+                    newCellShifts[workingStaffIds[i]][dayIdx] = "early";
+                    earlyStaffIds.push(workingStaffIds[i]);
+                  }
+                }
+              }
+              // 平日は遅番2人未満なら早番→遅番に
+              if (lateStaffCount < 2) {
+                for (
+                  let i = 0;
+                  i < workingStaffIds.length && lateStaffIds.length < 2;
+                  i++
+                ) {
+                  if (newCellShifts[workingStaffIds[i]][dayIdx] === "early") {
+                    newCellShifts[workingStaffIds[i]][dayIdx] = "late";
+                    lateStaffIds.push(workingStaffIds[i]);
+                  }
                 }
               }
             }
           } else {
-            // 平日は早番1人以上・遅番2人以上
-            if (earlyStaffCount < 1) {
-              for (
-                let i = 0;
-                i < workingStaffIds.length && earlyStaffCount < 1;
-                i++
-              ) {
-                if (newCellShifts[workingStaffIds[i]][dayIdx] === "late") {
-                  newCellShifts[workingStaffIds[i]][dayIdx] = "early";
-                }
+            // 従来のロジック
+            const minEarly = Math.max(2, Math.floor(workingStaffCount * 0.4));
+            const minLate = Math.max(2, Math.floor(workingStaffCount * 0.4));
+            // 早番が多すぎる場合（遅番が不足）
+            if (earlyStaffCount > minEarly && lateStaffCount < minLate) {
+              const excessEarly = earlyStaffCount - minEarly;
+              const neededLate = minLate - lateStaffCount;
+              const changeCount = Math.min(excessEarly, neededLate);
+              for (let i = 0; i < changeCount; i++) {
+                newCellShifts[earlyStaffIds[i]][dayIdx] = "late";
               }
             }
-            if (lateStaffCount < 2) {
-              for (
-                let i = 0;
-                i < workingStaffIds.length && lateStaffCount < 2;
-                i++
-              ) {
-                if (newCellShifts[workingStaffIds[i]][dayIdx] === "early") {
-                  newCellShifts[workingStaffIds[i]][dayIdx] = "late";
-                }
+            // 遅番が多すぎる場合（早番が不足）
+            if (lateStaffCount > minLate && earlyStaffCount < minEarly) {
+              const excessLate = lateStaffCount - minLate;
+              const neededEarly = minEarly - earlyStaffCount;
+              const changeCount = Math.min(excessLate, neededEarly);
+              for (let i = 0; i < changeCount; i++) {
+                newCellShifts[lateStaffIds[i]][dayIdx] = "early";
               }
             }
           }
