@@ -1057,8 +1057,137 @@ export default function AdminCreateShiftPage() {
         for (const staffId of staffIds) {
           const dayIndexes = Array.from({ length: daysInMonth }, (_, i) => i);
           dayIndexes.sort(() => Math.random() - 0.5);
-          for (let i = 0; i < 8; i++) {
-            newCellShifts[staffId][dayIndexes[i]] = "dayoff";
+
+          // 連続休みを避けるための改善版
+          const selectedDays: number[] = [];
+          const maxConsecutiveOff = 2; // 最大2日連続まで許可
+
+          for (
+            let i = 0;
+            i < dayIndexes.length && selectedDays.length < 8;
+            i++
+          ) {
+            const dayIdx = dayIndexes[i];
+
+            // 連続休みチェック
+            let canAdd = true;
+            if (selectedDays.length > 0) {
+              const lastSelected = selectedDays[selectedDays.length - 1];
+              // 直前の選択日と連続しているかチェック
+              if (Math.abs(dayIdx - lastSelected) <= maxConsecutiveOff) {
+                canAdd = false;
+              }
+            }
+
+            if (canAdd) {
+              selectedDays.push(dayIdx);
+            }
+          }
+
+          // 8日に満たない場合は残りから追加（連続チェックは緩和）
+          if (selectedDays.length < 8) {
+            for (
+              let i = 0;
+              i < dayIndexes.length && selectedDays.length < 8;
+              i++
+            ) {
+              const dayIdx = dayIndexes[i];
+              if (!selectedDays.includes(dayIdx)) {
+                selectedDays.push(dayIdx);
+              }
+            }
+          }
+
+          // 選択された日を休みに設定
+          for (const dayIdx of selectedDays) {
+            newCellShifts[staffId][dayIdx] = "dayoff";
+          }
+        }
+
+        // Phase 2.5: 6連勤以上が発生した場合の休み位置調整
+        let dayOffAdjustmentsMade = true;
+        let dayOffMaxIterations = 20;
+        while (dayOffAdjustmentsMade && dayOffMaxIterations > 0) {
+          dayOffAdjustmentsMade = false;
+          dayOffMaxIterations--;
+
+          for (const staffId of staffIds) {
+            // 各スタッフの連続勤務日数をチェック
+            let consecutiveCount = 0;
+            let maxConsecutive = 0;
+            let maxConsecutiveStart = 0;
+
+            for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+              if (
+                newCellShifts[staffId][dayIdx] &&
+                newCellShifts[staffId][dayIdx] !== "dayoff" &&
+                newCellShifts[staffId][dayIdx] !== "al"
+              ) {
+                consecutiveCount++;
+              } else {
+                if (consecutiveCount > maxConsecutive) {
+                  maxConsecutive = consecutiveCount;
+                  maxConsecutiveStart = dayIdx - consecutiveCount;
+                }
+                consecutiveCount = 0;
+              }
+            }
+            // 月末が連勤で終わる場合も考慮
+            if (consecutiveCount > maxConsecutive) {
+              maxConsecutive = consecutiveCount;
+              maxConsecutiveStart = daysInMonth - consecutiveCount;
+            }
+
+            // 6連勤以上が発生している場合、休みを挿入
+            if (maxConsecutive >= 6) {
+              // 連続勤務の真ん中あたりに休みを挿入
+              const insertDay =
+                maxConsecutiveStart + Math.floor(maxConsecutive / 2);
+
+              // 挿入予定日が勤務日で、他のスタッフが十分いる場合
+              if (
+                insertDay >= 0 &&
+                insertDay < daysInMonth &&
+                newCellShifts[staffId][insertDay] !== "dayoff"
+              ) {
+                const currentDate = addDays(month, insertDay);
+                const isSpecial = isSpecialDay(currentDate);
+                const otherWorkingStaff = staffIds.filter(
+                  (id) =>
+                    id !== staffId && newCellShifts[id][insertDay] !== "dayoff"
+                );
+
+                // 特別日は5人以上、平日は3人以上必要
+                const minRequired = isSpecial ? 5 : 3;
+
+                if (otherWorkingStaff.length >= minRequired) {
+                  // このスタッフの別の勤務日を探してスワップ
+                  for (let swapDay = 0; swapDay < daysInMonth; swapDay++) {
+                    if (
+                      swapDay !== insertDay &&
+                      newCellShifts[staffId][swapDay] === "dayoff"
+                    ) {
+                      const swapDate = addDays(month, swapDay);
+                      const swapIsSpecial = isSpecialDay(swapDate);
+                      const swapWorkingStaff = staffIds.filter(
+                        (id) => newCellShifts[id][swapDay] !== "dayoff"
+                      );
+
+                      // スワップ先の条件チェック
+                      const swapMinRequired = swapIsSpecial ? 5 : 3;
+                      if (swapWorkingStaff.length >= swapMinRequired) {
+                        // スワップ実行
+                        const tempShift = newCellShifts[staffId][insertDay];
+                        newCellShifts[staffId][insertDay] = "dayoff";
+                        newCellShifts[staffId][swapDay] = tempShift;
+                        dayOffAdjustmentsMade = true;
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
         // Phase 3: 平日・特別日の出勤人数調整
