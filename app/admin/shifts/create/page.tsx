@@ -591,41 +591,86 @@ const validateAllShifts = (
 
     // 人数確認
     const specialDay = isSpecialDay(currentDate);
-    if (specialDay) {
-      if (workingStaffCount < 6) {
-        warnings.push(
-          `${dateStr}: 特別日の勤務が${workingStaffCount}人です（6人以上必要です）。`
-        );
+    if (staffIds.length === 6) {
+      // 6人の場合の条件
+      if (specialDay) {
+        if (workingStaffCount < 5) {
+          warnings.push(
+            `${dateStr}: 特別日の勤務が${workingStaffCount}人です（5人以上必要です）。`
+          );
+        }
+      } else {
+        if (workingStaffCount < 3 || workingStaffCount > 4) {
+          warnings.push(
+            `${dateStr}: 平日の勤務が${workingStaffCount}人です（3人または4人であるべきです）。`
+          );
+        }
+      }
+      if (workingStaffCount > 0) {
+        const earlyStaffCount = workingStaffIds.filter(
+          (id) => shifts[id][dayIdx] === "early"
+        ).length;
+        const lateStaffCount = workingStaffIds.filter(
+          (id) => shifts[id][dayIdx] === "late"
+        ).length;
+        if (specialDay) {
+          if (earlyStaffCount < 2) {
+            warnings.push(
+              `${dateStr}: 早番が${earlyStaffCount}人です（特別日は最低2人必要です）。`
+            );
+          }
+          if (lateStaffCount < 2) {
+            warnings.push(
+              `${dateStr}: 遅番が${lateStaffCount}人です（特別日は最低2人必要です）。`
+            );
+          }
+        } else {
+          if (earlyStaffCount < 1) {
+            warnings.push(
+              `${dateStr}: 早番が${earlyStaffCount}人です（平日は最低1人必要です）。`
+            );
+          }
+          if (lateStaffCount < 2) {
+            warnings.push(
+              `${dateStr}: 遅番が${lateStaffCount}人です（平日は最低2人必要です）。`
+            );
+          }
+        }
       }
     } else {
-      // 平日
-      if (workingStaffCount < 4 || workingStaffCount > 5) {
-        warnings.push(
-          `${dateStr}: 平日の勤務が${workingStaffCount}人です（4人または5人であるべきです）。`
-        );
+      // 従来の条件
+      if (specialDay) {
+        if (workingStaffCount < 6) {
+          warnings.push(
+            `${dateStr}: 特別日の勤務が${workingStaffCount}人です（6人以上必要です）。`
+          );
+        }
+      } else {
+        if (workingStaffCount < 4 || workingStaffCount > 5) {
+          warnings.push(
+            `${dateStr}: 平日の勤務が${workingStaffCount}人です（4人または5人であるべきです）。`
+          );
+        }
       }
-    }
-
-    if (workingStaffCount > 0) {
-      // 早番/遅番のバランス確認
-      const earlyStaffCount = workingStaffIds.filter(
-        (id) => shifts[id][dayIdx] === "early"
-      ).length;
-      const lateStaffCount = workingStaffIds.filter(
-        (id) => shifts[id][dayIdx] === "late"
-      ).length;
-      const minEarly = Math.max(2, Math.floor(workingStaffCount * 0.4));
-      const minLate = Math.max(2, Math.floor(workingStaffCount * 0.4));
-
-      if (earlyStaffCount < minEarly) {
-        warnings.push(
-          `${dateStr}: 早番が${earlyStaffCount}人です（最低${minEarly}人必要です）。`
-        );
-      }
-      if (lateStaffCount < minLate) {
-        warnings.push(
-          `${dateStr}: 遅番が${lateStaffCount}人です（最低${minLate}人必要です）。`
-        );
+      if (workingStaffCount > 0) {
+        const earlyStaffCount = workingStaffIds.filter(
+          (id) => shifts[id][dayIdx] === "early"
+        ).length;
+        const lateStaffCount = workingStaffIds.filter(
+          (id) => shifts[id][dayIdx] === "late"
+        ).length;
+        const minEarly = Math.max(2, Math.floor(workingStaffCount * 0.4));
+        const minLate = Math.max(2, Math.floor(workingStaffCount * 0.4));
+        if (earlyStaffCount < minEarly) {
+          warnings.push(
+            `${dateStr}: 早番が${earlyStaffCount}人です（最低${minEarly}人必要です）。`
+          );
+        }
+        if (lateStaffCount < minLate) {
+          warnings.push(
+            `${dateStr}: 遅番が${lateStaffCount}人です（最低${minLate}人必要です）。`
+          );
+        }
       }
     }
   }
