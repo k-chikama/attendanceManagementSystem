@@ -1694,14 +1694,6 @@ export default function AdminCreateShiftPage() {
                   >
                     {multiSelectMode ? "複数選択中" : "複数選択"}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleAutoGenerateShifts}
-                    className="h-8 px-2 text-xs"
-                  >
-                    自動作成
-                  </Button>
                 </div>
                 {multiSelectMode && (
                   <span className="text-xs text-muted-foreground text-center">
@@ -1711,7 +1703,7 @@ export default function AdminCreateShiftPage() {
               </div>
             </div>
             <CardDescription>
-              月を選択し、シフトを自動生成するか、手動で入力してください。
+              月を選択し、手動で入力してください。
             </CardDescription>
           </CardHeader>
           <CardContent>
