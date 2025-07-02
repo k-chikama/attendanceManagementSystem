@@ -1146,6 +1146,25 @@ export default function AdminCreateShiftPage() {
         }
       }
 
+      // Phase 1.5: 承認済み休暇申請の日を強制的に休みに設定
+      for (const leave of approvedLeaves) {
+        const startDate = new Date(leave.startDate);
+        const endDate = new Date(leave.endDate);
+
+        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+          const currentDate = addDays(month, dayIdx);
+          const currentDateStr = format(currentDate, "yyyy-MM-dd");
+
+          // 休暇期間内の日かチェック
+          if (currentDate >= startDate && currentDate <= endDate) {
+            // 該当スタッフのその日を強制的に休みに設定
+            if (newCellShifts[leave.userId]) {
+              newCellShifts[leave.userId][dayIdx] = "dayoff";
+            }
+          }
+        }
+      }
+
       // Phase 2: 各スタッフの休み日数を8日に調整
       for (const staffId of staffIds) {
         const staffShifts = newCellShifts[staffId];
@@ -1166,6 +1185,16 @@ export default function AdminCreateShiftPage() {
             const currentDate = addDays(month, dayIdx);
             const isSpecial = isSpecialDay(currentDate);
 
+            // 承認済み休暇の日は変更対象から除外
+            const hasApprovedLeave = approvedLeaves.some((leave) => {
+              if (leave.userId !== staffId) return false;
+              const startDate = new Date(leave.startDate);
+              const endDate = new Date(leave.endDate);
+              return currentDate >= startDate && currentDate <= endDate;
+            });
+
+            if (hasApprovedLeave) continue;
+
             if (!isSpecial && staffShifts[dayIdx] === "early") {
               staffShifts[dayIdx] = "dayoff";
               changedCount++;
@@ -1180,6 +1209,16 @@ export default function AdminCreateShiftPage() {
           ) {
             const currentDate = addDays(month, dayIdx);
             const isSpecial = isSpecialDay(currentDate);
+
+            // 承認済み休暇の日は変更対象から除外
+            const hasApprovedLeave = approvedLeaves.some((leave) => {
+              if (leave.userId !== staffId) return false;
+              const startDate = new Date(leave.startDate);
+              const endDate = new Date(leave.endDate);
+              return currentDate >= startDate && currentDate <= endDate;
+            });
+
+            if (hasApprovedLeave) continue;
 
             if (!isSpecial && staffShifts[dayIdx] === "late") {
               staffShifts[dayIdx] = "dayoff";
@@ -1200,6 +1239,16 @@ export default function AdminCreateShiftPage() {
             const currentDate = addDays(month, dayIdx);
             const isSpecial = isSpecialDay(currentDate);
 
+            // 承認済み休暇の日は変更対象から除外
+            const hasApprovedLeave = approvedLeaves.some((leave) => {
+              if (leave.userId !== staffId) return false;
+              const startDate = new Date(leave.startDate);
+              const endDate = new Date(leave.endDate);
+              return currentDate >= startDate && currentDate <= endDate;
+            });
+
+            if (hasApprovedLeave) continue;
+
             if (isSpecial && staffShifts[dayIdx] === "dayoff") {
               staffShifts[dayIdx] = "late";
               changedCount++;
@@ -1214,6 +1263,16 @@ export default function AdminCreateShiftPage() {
           ) {
             const currentDate = addDays(month, dayIdx);
             const isSpecial = isSpecialDay(currentDate);
+
+            // 承認済み休暇の日は変更対象から除外
+            const hasApprovedLeave = approvedLeaves.some((leave) => {
+              if (leave.userId !== staffId) return false;
+              const startDate = new Date(leave.startDate);
+              const endDate = new Date(leave.endDate);
+              return currentDate >= startDate && currentDate <= endDate;
+            });
+
+            if (hasApprovedLeave) continue;
 
             if (!isSpecial && staffShifts[dayIdx] === "dayoff") {
               staffShifts[dayIdx] = "late";
@@ -1250,7 +1309,7 @@ export default function AdminCreateShiftPage() {
       description:
         "条件を満たすシフトを作成できませんでした。もう一度お試しください。",
     });
-  }, [staff, daysInMonth, toast, month]);
+  }, [staff, daysInMonth, toast, month, approvedLeaves]);
 
   // シフトタイプの検索を最適化
   const getShiftTypeInfo = useCallback(
