@@ -1177,10 +1177,11 @@ export default function AdminCreateShiftPage() {
         ).length;
 
         if (offDays < 8) {
-          // 8日に満たない場合：平日の早番→休み、なければ遅番→休み
+          // 8日に満たない場合：平日の早番→平日の遅番→土日の早番→土日の遅番の順で変更
           const neededOffDays = 8 - offDays;
           let changedCount = 0;
 
+          // 1. 平日の早番→休み
           for (
             let dayIdx = 0;
             dayIdx < daysInMonth && changedCount < neededOffDays;
@@ -1200,12 +1201,30 @@ export default function AdminCreateShiftPage() {
             if (hasApprovedLeave) continue;
 
             if (!isSpecial && staffShifts[dayIdx] === "early") {
-              staffShifts[dayIdx] = "dayoff";
-              changedCount++;
+              // 人数制限チェック
+              const workingStaffCount = staffIds.filter(
+                (id) =>
+                  newCellShifts[id][dayIdx] &&
+                  newCellShifts[id][dayIdx] !== "dayoff"
+              ).length;
+
+              let minRequired = 3; // デフォルト
+              if (numStaff === 5) {
+                minRequired = isSpecial ? 4 : 3;
+              } else if (numStaff === 6) {
+                minRequired = isSpecial ? 5 : 3;
+              } else if (numStaff === 7) {
+                minRequired = isSpecial ? 6 : 4;
+              }
+
+              if (workingStaffCount > minRequired) {
+                staffShifts[dayIdx] = "dayoff";
+                changedCount++;
+              }
             }
           }
 
-          // 早番が足りない場合は遅番から変更
+          // 2. 平日の遅番→休み
           for (
             let dayIdx = 0;
             dayIdx < daysInMonth && changedCount < neededOffDays;
@@ -1225,8 +1244,112 @@ export default function AdminCreateShiftPage() {
             if (hasApprovedLeave) continue;
 
             if (!isSpecial && staffShifts[dayIdx] === "late") {
-              staffShifts[dayIdx] = "dayoff";
-              changedCount++;
+              // 人数制限チェック
+              const workingStaffCount = staffIds.filter(
+                (id) =>
+                  newCellShifts[id][dayIdx] &&
+                  newCellShifts[id][dayIdx] !== "dayoff"
+              ).length;
+
+              let minRequired = 3; // デフォルト
+              if (numStaff === 5) {
+                minRequired = isSpecial ? 4 : 3;
+              } else if (numStaff === 6) {
+                minRequired = isSpecial ? 5 : 3;
+              } else if (numStaff === 7) {
+                minRequired = isSpecial ? 6 : 4;
+              }
+
+              if (workingStaffCount > minRequired) {
+                staffShifts[dayIdx] = "dayoff";
+                changedCount++;
+              }
+            }
+          }
+
+          // 3. 土日の早番→休み
+          for (
+            let dayIdx = 0;
+            dayIdx < daysInMonth && changedCount < neededOffDays;
+            dayIdx++
+          ) {
+            const currentDate = addDays(month, dayIdx);
+            const isSpecial = isSpecialDay(currentDate);
+
+            // 承認済み休暇の日は変更対象から除外
+            const hasApprovedLeave = approvedLeaves.some((leave) => {
+              if (leave.userId !== staffId) return false;
+              const startDate = new Date(leave.startDate);
+              const endDate = new Date(leave.endDate);
+              return currentDate >= startDate && currentDate <= endDate;
+            });
+
+            if (hasApprovedLeave) continue;
+
+            if (isSpecial && staffShifts[dayIdx] === "early") {
+              // 人数制限チェック
+              const workingStaffCount = staffIds.filter(
+                (id) =>
+                  newCellShifts[id][dayIdx] &&
+                  newCellShifts[id][dayIdx] !== "dayoff"
+              ).length;
+
+              let minRequired = 3; // デフォルト
+              if (numStaff === 5) {
+                minRequired = isSpecial ? 4 : 3;
+              } else if (numStaff === 6) {
+                minRequired = isSpecial ? 5 : 3;
+              } else if (numStaff === 7) {
+                minRequired = isSpecial ? 6 : 4;
+              }
+
+              if (workingStaffCount > minRequired) {
+                staffShifts[dayIdx] = "dayoff";
+                changedCount++;
+              }
+            }
+          }
+
+          // 4. 土日の遅番→休み
+          for (
+            let dayIdx = 0;
+            dayIdx < daysInMonth && changedCount < neededOffDays;
+            dayIdx++
+          ) {
+            const currentDate = addDays(month, dayIdx);
+            const isSpecial = isSpecialDay(currentDate);
+
+            // 承認済み休暇の日は変更対象から除外
+            const hasApprovedLeave = approvedLeaves.some((leave) => {
+              if (leave.userId !== staffId) return false;
+              const startDate = new Date(leave.startDate);
+              const endDate = new Date(leave.endDate);
+              return currentDate >= startDate && currentDate <= endDate;
+            });
+
+            if (hasApprovedLeave) continue;
+
+            if (isSpecial && staffShifts[dayIdx] === "late") {
+              // 人数制限チェック
+              const workingStaffCount = staffIds.filter(
+                (id) =>
+                  newCellShifts[id][dayIdx] &&
+                  newCellShifts[id][dayIdx] !== "dayoff"
+              ).length;
+
+              let minRequired = 3; // デフォルト
+              if (numStaff === 5) {
+                minRequired = isSpecial ? 4 : 3;
+              } else if (numStaff === 6) {
+                minRequired = isSpecial ? 5 : 3;
+              } else if (numStaff === 7) {
+                minRequired = isSpecial ? 6 : 4;
+              }
+
+              if (workingStaffCount > minRequired) {
+                staffShifts[dayIdx] = "dayoff";
+                changedCount++;
+              }
             }
           }
         } else if (offDays > 8) {
