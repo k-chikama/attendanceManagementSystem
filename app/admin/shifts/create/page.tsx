@@ -145,6 +145,7 @@ const shiftTypes = [
   {
     id: "early" as const,
     name: "早番",
+    shortName: "早",
     color: "bg-sky-200 text-sky-800",
     defaultStartTime: "09:30" as const,
     defaultEndTime: "19:00" as const,
@@ -152,6 +153,7 @@ const shiftTypes = [
   {
     id: "late" as const,
     name: "遅番",
+    shortName: "遅",
     color: "bg-violet-200 text-violet-800",
     defaultStartTime: "11:30" as const,
     defaultEndTime: "21:00" as const,
@@ -159,6 +161,7 @@ const shiftTypes = [
   {
     id: "dayoff" as const,
     name: "休み",
+    shortName: "休",
     color: "bg-slate-200 text-slate-800",
     defaultStartTime: "00:00" as const,
     defaultEndTime: "00:00" as const,
@@ -320,7 +323,7 @@ const ShiftCell = ({
                 isMobile ? "text-xs" : "text-xs"
               )}
             >
-              {shiftTypeInfo.name}
+              {(shiftTypeInfo as any).shortName || (shiftTypeInfo as any).name}
             </span>
           ) : (
             <span className="text-muted-foreground text-[10px]">-</span>
@@ -336,7 +339,8 @@ const ShiftCell = ({
                       isMobile ? "text-xs" : "text-xs"
                     )}
                   >
-                    {shiftTypeInfo.name}
+                    {(shiftTypeInfo as any).shortName ||
+                      (shiftTypeInfo as any).name}
                   </span>
                 ) : (
                   <span className="text-muted-foreground text-[10px]">-</span>
