@@ -1076,6 +1076,24 @@ export default function AdminCreateShiftPage() {
       });
 
       // Phase 1: 各日ごとに早番・遅番・休みをランダム配置
+
+      // まず承認済み休暇申請を先に設定
+      for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+        const currentDate = addDays(month, dayIdx);
+        const currentDateStr = format(currentDate, "yyyy-MM-dd");
+
+        for (const leave of approvedLeaves) {
+          if (
+            currentDateStr >= leave.startDate &&
+            currentDateStr <= leave.endDate
+          ) {
+            if (newCellShifts[leave.userId]) {
+              newCellShifts[leave.userId][dayIdx] = "dayoff";
+            }
+          }
+        }
+      }
+
       for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
         const currentDate = addDays(month, dayIdx);
         const isSpecial = isSpecialDay(currentDate);
@@ -1121,8 +1139,12 @@ export default function AdminCreateShiftPage() {
         for (const leave of approvedLeaves) {
           const startDate = new Date(leave.startDate);
           const endDate = new Date(leave.endDate);
+          const currentDateStr = format(currentDate, "yyyy-MM-dd");
 
-          if (currentDate >= startDate && currentDate <= endDate) {
+          if (
+            currentDateStr >= leave.startDate &&
+            currentDateStr <= leave.endDate
+          ) {
             staffWithApprovedLeave.push(leave.userId);
           }
         }
@@ -1135,9 +1157,18 @@ export default function AdminCreateShiftPage() {
         }
 
         // 残りのスタッフをシャッフルして割り当て
-        const remainingStaff = staffIds.filter(
-          (id) => !staffWithApprovedLeave.includes(id)
-        );
+        const remainingStaff = staffIds.filter((id) => {
+          // 承認済み休暇申請があるスタッフを除外
+          const hasApprovedLeave = approvedLeaves.some((leave) => {
+            const currentDateStr = format(currentDate, "yyyy-MM-dd");
+            return (
+              leave.userId === id &&
+              currentDateStr >= leave.startDate &&
+              currentDateStr <= leave.endDate
+            );
+          });
+          return !hasApprovedLeave;
+        });
         const shuffledStaff = [...remainingStaff].sort(
           () => Math.random() - 0.5
         );
@@ -1193,9 +1224,11 @@ export default function AdminCreateShiftPage() {
             // 承認済み休暇の日は変更対象から除外
             const hasApprovedLeave = approvedLeaves.some((leave) => {
               if (leave.userId !== staffId) return false;
-              const startDate = new Date(leave.startDate);
-              const endDate = new Date(leave.endDate);
-              return currentDate >= startDate && currentDate <= endDate;
+              const currentDateStr = format(currentDate, "yyyy-MM-dd");
+              return (
+                currentDateStr >= leave.startDate &&
+                currentDateStr <= leave.endDate
+              );
             });
 
             if (hasApprovedLeave) continue;
@@ -1217,7 +1250,19 @@ export default function AdminCreateShiftPage() {
                 minRequired = isSpecial ? 6 : 4;
               }
 
-              if (workingStaffCount > minRequired) {
+              // 承認済み休暇の日は変更しない
+              const hasApprovedLeaveOnThisDay = approvedLeaves.some((leave) => {
+                const currentDateStr = format(currentDate, "yyyy-MM-dd");
+                return (
+                  currentDateStr >= leave.startDate &&
+                  currentDateStr <= leave.endDate
+                );
+              });
+
+              if (
+                workingStaffCount > minRequired &&
+                !hasApprovedLeaveOnThisDay
+              ) {
                 staffShifts[dayIdx] = "dayoff";
                 changedCount++;
               }
@@ -1236,9 +1281,11 @@ export default function AdminCreateShiftPage() {
             // 承認済み休暇の日は変更対象から除外
             const hasApprovedLeave = approvedLeaves.some((leave) => {
               if (leave.userId !== staffId) return false;
-              const startDate = new Date(leave.startDate);
-              const endDate = new Date(leave.endDate);
-              return currentDate >= startDate && currentDate <= endDate;
+              const currentDateStr = format(currentDate, "yyyy-MM-dd");
+              return (
+                currentDateStr >= leave.startDate &&
+                currentDateStr <= leave.endDate
+              );
             });
 
             if (hasApprovedLeave) continue;
@@ -1260,7 +1307,19 @@ export default function AdminCreateShiftPage() {
                 minRequired = isSpecial ? 6 : 4;
               }
 
-              if (workingStaffCount > minRequired) {
+              // 承認済み休暇の日は変更しない
+              const hasApprovedLeaveOnThisDay = approvedLeaves.some((leave) => {
+                const currentDateStr = format(currentDate, "yyyy-MM-dd");
+                return (
+                  currentDateStr >= leave.startDate &&
+                  currentDateStr <= leave.endDate
+                );
+              });
+
+              if (
+                workingStaffCount > minRequired &&
+                !hasApprovedLeaveOnThisDay
+              ) {
                 staffShifts[dayIdx] = "dayoff";
                 changedCount++;
               }
@@ -1279,9 +1338,11 @@ export default function AdminCreateShiftPage() {
             // 承認済み休暇の日は変更対象から除外
             const hasApprovedLeave = approvedLeaves.some((leave) => {
               if (leave.userId !== staffId) return false;
-              const startDate = new Date(leave.startDate);
-              const endDate = new Date(leave.endDate);
-              return currentDate >= startDate && currentDate <= endDate;
+              const currentDateStr = format(currentDate, "yyyy-MM-dd");
+              return (
+                currentDateStr >= leave.startDate &&
+                currentDateStr <= leave.endDate
+              );
             });
 
             if (hasApprovedLeave) continue;
@@ -1303,7 +1364,19 @@ export default function AdminCreateShiftPage() {
                 minRequired = isSpecial ? 6 : 4;
               }
 
-              if (workingStaffCount > minRequired) {
+              // 承認済み休暇の日は変更しない
+              const hasApprovedLeaveOnThisDay = approvedLeaves.some((leave) => {
+                const currentDateStr = format(currentDate, "yyyy-MM-dd");
+                return (
+                  currentDateStr >= leave.startDate &&
+                  currentDateStr <= leave.endDate
+                );
+              });
+
+              if (
+                workingStaffCount > minRequired &&
+                !hasApprovedLeaveOnThisDay
+              ) {
                 staffShifts[dayIdx] = "dayoff";
                 changedCount++;
               }
@@ -1322,9 +1395,11 @@ export default function AdminCreateShiftPage() {
             // 承認済み休暇の日は変更対象から除外
             const hasApprovedLeave = approvedLeaves.some((leave) => {
               if (leave.userId !== staffId) return false;
-              const startDate = new Date(leave.startDate);
-              const endDate = new Date(leave.endDate);
-              return currentDate >= startDate && currentDate <= endDate;
+              const currentDateStr = format(currentDate, "yyyy-MM-dd");
+              return (
+                currentDateStr >= leave.startDate &&
+                currentDateStr <= leave.endDate
+              );
             });
 
             if (hasApprovedLeave) continue;
@@ -1346,7 +1421,19 @@ export default function AdminCreateShiftPage() {
                 minRequired = isSpecial ? 6 : 4;
               }
 
-              if (workingStaffCount > minRequired) {
+              // 承認済み休暇の日は変更しない
+              const hasApprovedLeaveOnThisDay = approvedLeaves.some((leave) => {
+                const currentDateStr = format(currentDate, "yyyy-MM-dd");
+                return (
+                  currentDateStr >= leave.startDate &&
+                  currentDateStr <= leave.endDate
+                );
+              });
+
+              if (
+                workingStaffCount > minRequired &&
+                !hasApprovedLeaveOnThisDay
+              ) {
                 staffShifts[dayIdx] = "dayoff";
                 changedCount++;
               }
@@ -1369,9 +1456,11 @@ export default function AdminCreateShiftPage() {
             // 承認済み休暇の日は変更対象から除外
             const hasApprovedLeave = approvedLeaves.some((leave) => {
               if (leave.userId !== staffId) return false;
-              const startDate = new Date(leave.startDate);
-              const endDate = new Date(leave.endDate);
-              return currentDate >= startDate && currentDate <= endDate;
+              const currentDateStr = format(currentDate, "yyyy-MM-dd");
+              return (
+                currentDateStr >= leave.startDate &&
+                currentDateStr <= leave.endDate
+              );
             });
 
             if (hasApprovedLeave) continue;
@@ -1394,9 +1483,11 @@ export default function AdminCreateShiftPage() {
             // 承認済み休暇の日は変更対象から除外
             const hasApprovedLeave = approvedLeaves.some((leave) => {
               if (leave.userId !== staffId) return false;
-              const startDate = new Date(leave.startDate);
-              const endDate = new Date(leave.endDate);
-              return currentDate >= startDate && currentDate <= endDate;
+              const currentDateStr = format(currentDate, "yyyy-MM-dd");
+              return (
+                currentDateStr >= leave.startDate &&
+                currentDateStr <= leave.endDate
+              );
             });
 
             if (hasApprovedLeave) continue;
