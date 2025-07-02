@@ -1742,8 +1742,8 @@ export default function AdminCreateShiftPage() {
               {format(month, "yyyy年M月", { locale: ja })}のシフト表
             </CardTitle>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              {/* 月選択 */}
-              <div className="flex items-center gap-2">
+              {/* 月選択（スマホは上） */}
+              <div className="flex items-center gap-2 order-1 md:order-none">
                 <Button
                   size="icon"
                   variant="outline"
@@ -1764,24 +1764,23 @@ export default function AdminCreateShiftPage() {
                   {">"}
                 </Button>
               </div>
-              {/* 複数選択モードボタン */}
-              <div className="flex flex-col sm:flex-row items-center gap-2 mt-2">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={multiSelectMode ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setMultiSelectMode((v) => !v)}
-                    aria-pressed={multiSelectMode}
-                    className={cn(
-                      "h-8 px-2 text-xs",
-                      multiSelectMode && "text-primary-foreground"
-                    )}
-                  >
-                    {multiSelectMode ? "複数選択中" : "複数選択"}
-                  </Button>
-                </div>
+              {/* 複数選択モードボタン（スマホは下に左寄せ） */}
+              <div className="flex items-center gap-2 mt-2 md:mt-0 order-2 md:order-none w-full md:w-auto">
+                <Button
+                  variant={multiSelectMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setMultiSelectMode((v) => !v)}
+                  aria-pressed={multiSelectMode}
+                  className={cn(
+                    "h-8 px-3 text-xs",
+                    multiSelectMode && "text-primary-foreground",
+                    "justify-start md:justify-center w-full md:w-auto"
+                  )}
+                >
+                  {multiSelectMode ? "複数選択中" : "複数選択"}
+                </Button>
                 {multiSelectMode && (
-                  <span className="text-xs text-muted-foreground text-center">
+                  <span className="text-xs text-muted-foreground">
                     セルをタップで選択・解除
                   </span>
                 )}
