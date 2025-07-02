@@ -129,10 +129,10 @@ export default function Header({ user }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="w-full px-2 sm:px-4 lg:px-6">
-        <div className="flex h-16 items-center w-full">
+      <div className="w-full px-3 sm:px-4 lg:px-6">
+        <div className="flex h-14 sm:h-16 items-center justify-between w-full">
           {/* ロゴ部分 */}
-          <div className="flex items-center shrink-0 mr-4">
+          <div className="flex items-center">
             <Link
               href="/dashboard"
               className="flex items-center space-x-1 sm:space-x-2 transition-colors hover:text-primary"
@@ -144,7 +144,7 @@ export default function Header({ user }: HeaderProps) {
           </div>
 
           {/* ナビゲーション部分 - デスクトップのみ表示 */}
-          <div className="flex-1 min-w-0 hidden sm:block">
+          <div className="hidden sm:flex flex-1 min-w-0 ml-4">
             <nav className="flex items-center space-x-1 xl:space-x-2 overflow-x-auto scrollbar-hide w-full nav-scroll">
               {navigationItems.map((item) => {
                 if (item.adminOnly && user.role !== "admin") {
@@ -171,7 +171,7 @@ export default function Header({ user }: HeaderProps) {
           </div>
 
           {/* ユーザー情報部分 */}
-          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 shrink-0 ml-4">
+          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
             <div className="hidden sm:flex items-center gap-1 sm:gap-2">
               <Link
                 href="/profile"
@@ -199,16 +199,20 @@ export default function Header({ user }: HeaderProps) {
             {/* モバイルメニュー */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="sm:hidden">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="sm:hidden h-9 w-9"
+                >
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">メニューを開く</span>
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[280px] sm:w-[320px]">
                 <SheetHeader>
-                  <SheetTitle>メニュー</SheetTitle>
+                  <SheetTitle className="text-left">メニュー</SheetTitle>
                 </SheetHeader>
-                <div className="mt-4 sm:mt-6 flex flex-col space-y-2 sm:space-y-4">
+                <div className="mt-6 flex flex-col space-y-2">
                   {navigationItems.map((item) => {
                     if (item.adminOnly && user.role !== "admin") {
                       return null;
@@ -220,24 +224,24 @@ export default function Header({ user }: HeaderProps) {
                         href={item.href}
                         onClick={handleNavigation}
                         className={cn(
-                          "flex items-center px-3 sm:px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                          "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors",
                           isActive
-                            ? "bg-primary/10 text-primary"
+                            ? "bg-primary/10 text-primary border border-primary/20"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                         )}
                       >
-                        <item.icon className="h-4 w-4 mr-2" />
+                        <item.icon className="h-5 w-5 mr-3" />
                         <span>{item.name}</span>
                       </Link>
                     );
                   })}
-                  <div className="border-t pt-3 sm:pt-4 mt-3 sm:mt-4">
+                  <div className="border-t pt-4 mt-4">
                     <Link
                       href="/profile"
                       onClick={handleNavigation}
-                      className="flex items-center px-3 sm:px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md"
+                      className="flex items-center px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
                     >
-                      <User className="h-4 w-4 mr-2" />
+                      <User className="h-5 w-5 mr-3" />
                       {user.name}さん
                     </Link>
                     <Button
@@ -245,9 +249,9 @@ export default function Header({ user }: HeaderProps) {
                       size="sm"
                       onClick={handleLogout}
                       disabled={isLoggingOut}
-                      className="w-full justify-start text-muted-foreground hover:text-foreground px-3 sm:px-4 py-2"
+                      className="w-full justify-start text-muted-foreground hover:text-foreground px-4 py-3 h-auto"
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
+                      <LogOut className="h-5 w-5 mr-3" />
                       {isLoggingOut ? "ログアウト中..." : "ログアウト"}
                     </Button>
                   </div>
