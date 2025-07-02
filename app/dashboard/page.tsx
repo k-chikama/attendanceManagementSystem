@@ -10,6 +10,11 @@ import {
   LeaveRequest,
 } from "@/lib/attendance";
 import {
+  getPaidLeaveBalance,
+  refreshPaidLeaveBalance,
+  type PaidLeaveBalance,
+} from "@/lib/leave";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -23,17 +28,41 @@ export default function Dashboard() {
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
+  const [paidLeaveBalance, setPaidLeaveBalance] =
+    useState<PaidLeaveBalance | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const attendance = await getUserAttendance(user.id);
-      setAttendanceData(attendance);
-      const leaves = await getUserLeaveRequests(user.id);
-      setLeaveRequests(leaves);
-      const today = await getTodayAttendance(user.id);
-      setTodayRecord(today);
-    })();
+    const loadData = async () => {
+      if (!user) return;
+
+      try {
+        setIsLoading(true);
+
+        // 勤怠データを取得
+        const attendance = await getUserAttendance(user.id);
+        setAttendanceData(attendance);
+
+        // 休暇申請データを取得
+        const leaves = await getUserLeaveRequests(user.id);
+        setLeaveRequests(leaves);
+
+        // 有給休暇の残日数を取得
+        const currentYear = new Date().getFullYear();
+        const balance = await refreshPaidLeaveBalance(user.id, currentYear);
+        setPaidLeaveBalance(balance);
+
+        // 今日の勤怠データを取得
+        const today = await getTodayAttendance(user.id);
+        setTodayRecord(today);
+      } catch (error) {
+        console.error("データの読み込みに失敗:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
   }, [user]);
 
   if (!user) {
@@ -131,6 +160,27 @@ export default function Dashboard() {
               </p>
             </CardContent>
           </Card>
+
+          {/* 有給休暇残日数 */}
+          {paidLeaveBalance && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  有給休暇残日数
+                </CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {paidLeaveBalance.remainingDays} 日
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  付与: {paidLeaveBalance.totalDays}日 / 使用:{" "}
+                  {paidLeaveBalance.usedDays}日
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </AppLayout>

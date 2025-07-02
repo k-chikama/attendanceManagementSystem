@@ -30,6 +30,17 @@ export interface LeaveRequest {
   comment?: string;
 }
 
+// 有給休暇の残日数管理
+export interface PaidLeaveBalance {
+  userId: string;
+  year: number;
+  totalDays: number; // 年間付与日数
+  usedDays: number; // 使用済み日数
+  remainingDays: number; // 残日数
+  createdAt: string;
+  updatedAt: string;
+}
+
 const LEAVES_COLLECTION = "leaves";
 
 // 休暇申請一覧を取得
@@ -199,4 +210,111 @@ export function validateLeaveRequest(data: {
   // }
 
   return null;
+}
+
+// 有給休暇の残日数を取得
+export async function getPaidLeaveBalance(
+  userId: string,
+  year: number
+): Promise<PaidLeaveBalance> {
+  try {
+    const docRef = doc(db, "paidLeaveBalances", `${userId}_${year}`);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      return {
+        id: docSnap.id,
+        ...(docSnap.data() as Omit<PaidLeaveBalance, "id">),
+      } as PaidLeaveBalance;
+    } else {
+      // デフォルト値を作成（年間20日付与）
+      const defaultBalance: PaidLeaveBalance = {
+        userId,
+        year,
+        totalDays: 20,
+        usedDays: 0,
+        remainingDays: 20,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // デフォルト値を保存
+      await setDoc(docRef, defaultBalance);
+      return defaultBalance;
+    }
+  } catch (error) {
+    console.error("有給休暇残日数の取得に失敗:", error);
+    throw error;
+  }
+}
+
+// 有給休暇の残日数を更新
+export async function updatePaidLeaveBalance(
+  userId: string,
+  year: number,
+  usedDays: number
+): Promise<PaidLeaveBalance> {
+  try {
+    const balance = await getPaidLeaveBalance(userId, year);
+    const updatedBalance: PaidLeaveBalance = {
+      ...balance,
+      usedDays,
+      remainingDays: Math.max(0, balance.totalDays - usedDays),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const docRef = doc(db, "paidLeaveBalances", `${userId}_${year}`);
+    await setDoc(docRef, updatedBalance);
+
+    return updatedBalance;
+  } catch (error) {
+    console.error("有給休暇残日数の更新に失敗:", error);
+    throw error;
+  }
+}
+
+// 有給休暇の使用日数を計算
+export async function calculatePaidLeaveUsedDays(
+  userId: string,
+  year: number
+): Promise<number> {
+  try {
+    const requests = await getUserLeaveRequests(userId);
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31);
+
+    let totalUsedDays = 0;
+
+    requests.forEach((request) => {
+      if (request.type === "有給休暇" && request.status === "approved") {
+        const startDate = new Date(request.startDate);
+        const endDate = new Date(request.endDate);
+
+        // 指定年の申請のみを集計
+        if (startDate >= yearStart && startDate <= yearEnd) {
+          const days = calculateLeaveDays(request.startDate, request.endDate);
+          totalUsedDays += days;
+        }
+      }
+    });
+
+    return totalUsedDays;
+  } catch (error) {
+    console.error("有給休暇使用日数の計算に失敗:", error);
+    return 0;
+  }
+}
+
+// 有給休暇の残日数を自動更新
+export async function refreshPaidLeaveBalance(
+  userId: string,
+  year: number
+): Promise<PaidLeaveBalance> {
+  try {
+    const usedDays = await calculatePaidLeaveUsedDays(userId, year);
+    return await updatePaidLeaveBalance(userId, year, usedDays);
+  } catch (error) {
+    console.error("有給休暇残日数の自動更新に失敗:", error);
+    throw error;
+  }
 }

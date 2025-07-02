@@ -49,6 +49,7 @@ import {
   deleteLeaveRequest,
   validateLeaveRequest,
   calculateLeaveDays,
+  refreshPaidLeaveBalance,
   type LeaveRequest,
 } from "@/lib/leave";
 import AppLayout from "@/components/layout/layout";
@@ -166,38 +167,67 @@ export default function LeavePage() {
     }
   };
 
-  // 管理者用 承認/却下処理
-  const handleAdminStatusUpdate = async (
-    requestId: string,
-    newStatus: "approved" | "rejected"
-  ) => {
+  const handleApprove = async (requestId: string, comment: string) => {
     try {
-      setIsAdminSubmitting(true);
-      const updatedRequest = await updateLeaveRequest(requestId, {
-        status: newStatus,
-        comment: adminComment,
+      await updateLeaveRequest(requestId, {
+        status: "approved",
+        comment,
         approvedBy: user?.id,
         approvedAt: new Date().toISOString(),
       });
-      setAllRequests((prev) =>
-        prev.map((req) => (req.id === requestId ? updatedRequest : req))
-      );
-      setSelectedRequest(null);
-      setAdminComment("");
+
+      // 有給休暇が承認された場合、残日数を更新
+      const request = allRequests.find((r) => r.id === requestId);
+      if (request && request.type === "有給休暇") {
+        const currentYear = new Date().getFullYear();
+        await refreshPaidLeaveBalance(request.userId, currentYear);
+      }
+
       toast({
-        title: "更新完了",
-        description: `休暇申請を${
-          newStatus === "approved" ? "承認" : "却下"
-        }しました。`,
+        title: "承認しました",
+        description: "休暇申請を承認しました。",
       });
+
+      // データを再取得
+      if (user && user.role === "admin") {
+        const all = await getLeaveRequests();
+        setAllRequests(all);
+      }
     } catch (error) {
+      console.error("承認エラー:", error);
       toast({
         variant: "destructive",
         title: "エラー",
-        description: "更新に失敗しました。",
+        description: "承認に失敗しました。",
       });
-    } finally {
-      setIsAdminSubmitting(false);
+    }
+  };
+
+  const handleReject = async (requestId: string, comment: string) => {
+    try {
+      await updateLeaveRequest(requestId, {
+        status: "rejected",
+        comment,
+        approvedBy: user?.id,
+        approvedAt: new Date().toISOString(),
+      });
+      toast({
+        title: "却下しました",
+        description: "休暇申請を却下しました。",
+      });
+
+      // データを再取得
+      if (user && user.role === "admin") {
+        const all = await getLeaveRequests();
+        setAllRequests(all);
+      }
+    } catch (error) {
+      console.error("却下エラー:", error);
+      toast({
+        variant: "destructive",
+        title: "エラー",
+        description: "却下に失敗しました。",
+      });
     }
   };
 
@@ -373,10 +403,7 @@ export default function LeavePage() {
                                       <Button
                                         variant="destructive"
                                         onClick={() =>
-                                          handleAdminStatusUpdate(
-                                            request.id,
-                                            "rejected"
-                                          )
+                                          handleReject(request.id, adminComment)
                                         }
                                         disabled={isAdminSubmitting}
                                       >
@@ -384,9 +411,9 @@ export default function LeavePage() {
                                       </Button>
                                       <Button
                                         onClick={() =>
-                                          handleAdminStatusUpdate(
+                                          handleApprove(
                                             request.id,
-                                            "approved"
+                                            adminComment
                                           )
                                         }
                                         disabled={isAdminSubmitting}
@@ -541,10 +568,7 @@ export default function LeavePage() {
                                 <Button
                                   variant="destructive"
                                   onClick={() =>
-                                    handleAdminStatusUpdate(
-                                      request.id,
-                                      "rejected"
-                                    )
+                                    handleReject(request.id, adminComment)
                                   }
                                   disabled={isAdminSubmitting}
                                 >
@@ -552,10 +576,7 @@ export default function LeavePage() {
                                 </Button>
                                 <Button
                                   onClick={() =>
-                                    handleAdminStatusUpdate(
-                                      request.id,
-                                      "approved"
-                                    )
+                                    handleApprove(request.id, adminComment)
                                   }
                                   disabled={isAdminSubmitting}
                                 >

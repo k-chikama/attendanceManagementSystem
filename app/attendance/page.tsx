@@ -51,50 +51,63 @@ import { AttendanceRecord, getUserAttendance } from "@/lib/attendance";
 import AppLayout from "@/components/layout/layout";
 import { getShiftsByUser } from "@/lib/firestoreShifts";
 import { getUserLeaveRequests } from "@/lib/leave";
+import {
+  getPaidLeaveBalance,
+  refreshPaidLeaveBalance,
+  type PaidLeaveBalance,
+} from "@/lib/leave";
 
 export default function AttendancePage() {
   const user = useUser();
-  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
-  const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>(
-    []
-  );
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
   const [leaves, setLeaves] = useState<any[]>([]);
-
-  // Load attendance data
-  useEffect(() => {
-    if (!user) return;
-    const attendance = getUserAttendance(user.id);
-    setAttendanceData(attendance);
-  }, [user]);
-
-  // Filter records when month changes
-  useEffect(() => {
-    if (attendanceData.length > 0) {
-      const startDate = format(startOfMonth(selectedMonth), "yyyy-MM-dd");
-      const endDate = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
-
-      const filtered = attendanceData.filter((record) => {
-        return record.date >= startDate && record.date <= endDate;
-      });
-
-      setFilteredRecords(filtered);
-    }
-  }, [attendanceData, selectedMonth]);
+  const [paidLeaveBalance, setPaidLeaveBalance] =
+    useState<PaidLeaveBalance | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
-    getShiftsByUser(user.id).then(setShifts);
-  }, [user]);
+    const loadData = async () => {
+      if (!user) return;
 
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const leaves = await getUserLeaveRequests(user.id);
-      setLeaves(leaves);
-    })();
-  }, [user]);
+      try {
+        setIsLoading(true);
+
+        // 勤怠データを取得
+        const attendanceData = await getUserAttendance(user.id);
+        setRecords(attendanceData);
+
+        // シフトデータを取得
+        const year = selectedMonth.getFullYear();
+        const month = selectedMonth.getMonth() + 1;
+        const staffShifts = (await getShiftsByUser(user.id)) as any[];
+
+        // 月次フィルタリング
+        const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+        const endDate = `${year}-${String(month).padStart(2, "0")}-31`;
+        const filteredShifts = staffShifts.filter(
+          (shift) => shift.date >= startDate && shift.date <= endDate
+        );
+        setShifts(filteredShifts);
+
+        // 休暇申請データを取得
+        const staffLeaves = await getUserLeaveRequests(user.id);
+        setLeaves(staffLeaves);
+
+        // 有給休暇の残日数を取得
+        const currentYear = new Date().getFullYear();
+        const balance = await refreshPaidLeaveBalance(user.id, currentYear);
+        setPaidLeaveBalance(balance);
+      } catch (error) {
+        console.error("データの読み込みに失敗:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user, selectedMonth]);
 
   if (!user) {
     return (
@@ -261,7 +274,7 @@ export default function AttendancePage() {
       return "休暇";
     }
     // 3. 勤怠データ
-    const record = filteredRecords.find((r) => r.date === date);
+    const record = records.find((r) => r.date === date);
     if (!record) {
       return "未登録";
     }
@@ -322,7 +335,7 @@ export default function AttendancePage() {
                   </div>
                   <div className="text-2xl font-bold">
                     {
-                      filteredRecords.filter(
+                      records.filter(
                         (r) => r.status === "present" || r.status === "late"
                       ).length
                     }
@@ -337,7 +350,7 @@ export default function AttendancePage() {
                   </div>
                   <div className="text-2xl font-bold">
                     {formatWorkTime(
-                      filteredRecords.reduce(
+                      records.reduce(
                         (sum, r) => sum + (r.totalWorkTime || 0),
                         0
                       )
@@ -346,14 +359,14 @@ export default function AttendancePage() {
                   <div className="text-sm text-muted-foreground">
                     平均:{" "}
                     {formatWorkTime(
-                      filteredRecords.filter(
+                      records.filter(
                         (r) => r.status === "present" || r.status === "late"
                       ).length > 0
-                        ? filteredRecords.reduce(
+                        ? records.reduce(
                             (sum, r) => sum + (r.totalWorkTime || 0),
                             0
                           ) /
-                            filteredRecords.filter(
+                            records.filter(
                               (r) =>
                                 r.status === "present" || r.status === "late"
                             ).length
@@ -370,7 +383,7 @@ export default function AttendancePage() {
                   </div>
                   <div className="text-2xl font-bold">
                     {formatWorkTime(
-                      filteredRecords.reduce(
+                      records.reduce(
                         (sum, r) => sum + (r.totalWorkTime || 0),
                         0
                       )
@@ -384,13 +397,47 @@ export default function AttendancePage() {
                     遅刻日数
                   </div>
                   <div className="text-2xl font-bold">
-                    {filteredRecords.filter((r) => r.status === "late").length}{" "}
-                    日
+                    {records.filter((r) => r.status === "late").length} 日
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* 有給休暇残日数 */}
+          {paidLeaveBalance && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  有給休暇残日数
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold text-blue-900">
+                        現在の残日数
+                      </h4>
+                      <p className="text-sm text-blue-700">
+                        {new Date().getFullYear()}年度
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-blue-900">
+                        {paidLeaveBalance.remainingDays}日
+                      </div>
+                      <div className="text-sm text-blue-700">
+                        付与: {paidLeaveBalance.totalDays}日 / 使用:{" "}
+                        {paidLeaveBalance.usedDays}日
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader className="pb-2">
@@ -413,9 +460,7 @@ export default function AttendancePage() {
                   <TableBody>
                     {daysInMonth.map((day) => {
                       const dateStr = format(day, "yyyy-MM-dd");
-                      const record = filteredRecords.find(
-                        (r) => r.date === dateStr
-                      );
+                      const record = records.find((r) => r.date === dateStr);
                       const isWeekendDay = isWeekend(day);
 
                       return (
@@ -474,9 +519,7 @@ export default function AttendancePage() {
               <div className="md:hidden space-y-4">
                 {daysInMonth.map((day) => {
                   const dateStr = format(day, "yyyy-MM-dd");
-                  const record = filteredRecords.find(
-                    (r) => r.date === dateStr
-                  );
+                  const record = records.find((r) => r.date === dateStr);
                   const isWeekendDay = isWeekend(day);
 
                   return (
