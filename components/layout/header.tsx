@@ -143,8 +143,8 @@ export default function Header({ user }: HeaderProps) {
             </Link>
           </div>
 
-          {/* ナビゲーション部分 - 画面幅の大部分を占める */}
-          <div className="flex-1 min-w-0">
+          {/* ナビゲーション部分 - デスクトップのみ表示 */}
+          <div className="flex-1 min-w-0 hidden sm:block">
             <nav className="flex items-center space-x-1 xl:space-x-2 overflow-x-auto scrollbar-hide w-full nav-scroll">
               {navigationItems.map((item) => {
                 if (item.adminOnly && user.role !== "admin") {
@@ -163,10 +163,7 @@ export default function Header({ user }: HeaderProps) {
                     )}
                   >
                     <item.icon className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
-                    <span className="hidden sm:inline">{item.name}</span>
-                    <span className="sm:hidden text-xs">
-                      {item.name.substring(0, 2)}
-                    </span>
+                    <span>{item.name}</span>
                   </Link>
                 );
               })}
@@ -202,7 +199,7 @@ export default function Header({ user }: HeaderProps) {
             {/* モバイルメニュー */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="sm:hidden -mr-1">
+                <Button variant="ghost" size="icon" className="sm:hidden">
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">メニューを開く</span>
                 </Button>
