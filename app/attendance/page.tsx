@@ -243,8 +243,8 @@ export default function AttendancePage() {
         return "遅番";
       case "dayoff":
         return "休み";
-      case "al":
-        return "AL";
+      case "seminar":
+        return "セ";
       case "overtime":
         return "残業";
       default:

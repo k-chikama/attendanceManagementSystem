@@ -36,8 +36,8 @@ function getShiftTypeLabel(type: string | undefined): string | undefined {
       return "遅番";
     case "dayoff":
       return "休み";
-    case "al":
-      return "AL";
+    case "seminar":
+      return "セ";
     case "overtime":
       return "残業";
     default:
@@ -52,7 +52,7 @@ function ShiftBadge({ type }: { type: string | undefined | null }) {
   if (type === "休み") color = "bg-slate-200 text-slate-800";
   if (type === "早番") color = "bg-sky-200 text-sky-800";
   if (type === "遅番") color = "bg-violet-200 text-violet-800";
-  if (type === "AL") color = "bg-emerald-200 text-emerald-800";
+  if (type === "セ") color = "bg-emerald-200 text-emerald-800";
   if (type === "残業") color = "bg-orange-200 text-orange-800";
 
   return (
@@ -93,7 +93,7 @@ function TodayShifts({
   const getWorkingStaff = (date: Date) => {
     return users.filter((user) => {
       const shift = getShiftForDate(user.id || user.uid, date);
-      return shift && shift !== "休み" && shift !== "AL";
+      return shift && shift !== "休み" && shift !== "セ";
     });
   };
 

@@ -1,5 +1,5 @@
 // Types
-export type ShiftType = "early" | "late" | "dayoff" | "al";
+export type ShiftType = "early" | "late" | "dayoff" | "seminar";
 
 export interface Shift {
   id: string;
@@ -131,11 +131,13 @@ export function getMonthlyShiftSummary(
     return endHours - startHours + (endMinutes - startMinutes) / 60;
   };
 
-  // 早番・遅番・ALのみを通常勤務時間として集計
+  // 早番・遅番・セミナーのみを通常勤務時間として集計
   const totalRegularHours = monthlyShifts
     .filter(
       (shift) =>
-        shift.type === "early" || shift.type === "late" || shift.type === "al"
+        shift.type === "early" ||
+        shift.type === "late" ||
+        shift.type === "seminar"
     )
     .reduce(
       (sum, shift) => sum + calculateHours(shift.startTime, shift.endTime),
@@ -160,8 +162,8 @@ export function getShiftTypeLabel(type: ShiftType): string {
       return "遅番";
     case "dayoff":
       return "休み";
-    case "al":
-      return "AL";
+    case "seminar":
+      return "セ";
     default:
       return "不明";
   }
@@ -175,7 +177,7 @@ export function getShiftTypeColor(type: ShiftType): string {
       return "bg-purple-100 text-purple-800";
     case "dayoff":
       return "bg-gray-100 text-gray-800";
-    case "al":
+    case "seminar":
       return "bg-green-100 text-green-800";
     default:
       return "bg-gray-100 text-gray-800";

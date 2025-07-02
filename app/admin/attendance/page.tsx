@@ -97,7 +97,7 @@ type Shift = {
   date: string;
   startTime: string;
   endTime: string;
-  type: "early" | "late" | "dayoff" | "al";
+  type: "early" | "late" | "dayoff" | "seminar";
   status: "pending" | "approved" | "rejected";
   createdAt: string;
   updatedAt: string;
@@ -267,8 +267,8 @@ export default function AdminAttendancePage() {
         return "遅番";
       case "dayoff":
         return "休み";
-      case "al":
-        return "AL";
+      case "seminar":
+        return "セ";
       default:
         return "-";
     }
@@ -291,7 +291,7 @@ export default function AdminAttendancePage() {
   const getStatusForDate = (date: string) => {
     // 1. シフトが休み
     const shift = shifts.find((s) => s.date === date);
-    if (shift && (shift.type === "dayoff" || shift.type === "al")) {
+    if (shift && (shift.type === "dayoff" || shift.type === "seminar")) {
       return "休み";
     }
     // 2. 休暇申請が承認済み

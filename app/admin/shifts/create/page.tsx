@@ -164,8 +164,9 @@ const shiftTypes = [
     defaultEndTime: "00:00" as const,
   },
   {
-    id: "al" as const,
-    name: "AL",
+    id: "seminar" as const,
+    name: "セミナー",
+    shortName: "セ",
     color: "bg-emerald-200 text-emerald-800",
     defaultStartTime: "00:00" as const,
     defaultEndTime: "00:00" as const,
@@ -183,7 +184,7 @@ type ShiftTime =
   | "00:00";
 
 // シフトの型定義を更新
-type ShiftTypeForDB = "early" | "late" | "dayoff" | "al";
+type ShiftTypeForDB = "early" | "late" | "dayoff" | "seminar";
 
 // 時間を分に変換する関数
 function timeToMinutes(time: string): number {
@@ -202,7 +203,7 @@ function minutesToTime(minutes: number): string {
 
 // シフトの位置と幅を計算する関数
 function calculateShiftPosition(shift: any) {
-  if (shift.type === "dayoff" || shift.type === "al") {
+  if (shift.type === "dayoff" || shift.type === "seminar") {
     return { left: 0, width: "100%" };
   }
 
@@ -392,7 +393,7 @@ const checkConsecutiveWorkDays = (
     if (
       staffShifts[i] &&
       staffShifts[i] !== "dayoff" &&
-      staffShifts[i] !== "al"
+      staffShifts[i] !== "seminar"
     ) {
       forwardCount++;
     } else {
@@ -406,7 +407,7 @@ const checkConsecutiveWorkDays = (
     if (
       staffShifts[i] &&
       staffShifts[i] !== "dayoff" &&
-      staffShifts[i] !== "al"
+      staffShifts[i] !== "seminar"
     ) {
       backwardCount++;
     } else {
@@ -430,7 +431,7 @@ const isShiftBalanceValid = (
     (id) =>
       shifts[id]?.[dayIdx] &&
       shifts[id][dayIdx] !== "dayoff" &&
-      shifts[id][dayIdx] !== "al"
+      shifts[id][dayIdx] !== "seminar"
   );
   const workingStaffCount = workingStaffIds.length;
 
@@ -460,7 +461,7 @@ const reduceConsecutiveWorkDays = (
       if (
         shifts[staffId][dayIdx] &&
         shifts[staffId][dayIdx] !== "dayoff" &&
-        shifts[staffId][dayIdx] !== "al" &&
+        shifts[staffId][dayIdx] !== "seminar" &&
         !checkConsecutiveWorkDays(shifts, staffId, dayIdx, 5)
       ) {
         const sourceDay = dayIdx;
@@ -571,7 +572,7 @@ const validateAllShifts = (
       if (
         staffShifts[dayIdx] &&
         staffShifts[dayIdx] !== "dayoff" &&
-        staffShifts[dayIdx] !== "al"
+        staffShifts[dayIdx] !== "seminar"
       ) {
         consecutiveCount++;
       } else {
