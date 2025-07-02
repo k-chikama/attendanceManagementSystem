@@ -1116,8 +1116,31 @@ export default function AdminCreateShiftPage() {
           }
         }
 
-        // スタッフをシャッフルして割り当て
-        const shuffledStaff = [...staffIds].sort(() => Math.random() - 0.5);
+        // 承認済み休暇申請があるスタッフを特定
+        const staffWithApprovedLeave: string[] = [];
+        for (const leave of approvedLeaves) {
+          const startDate = new Date(leave.startDate);
+          const endDate = new Date(leave.endDate);
+
+          if (currentDate >= startDate && currentDate <= endDate) {
+            staffWithApprovedLeave.push(leave.userId);
+          }
+        }
+
+        // 承認済み休暇申請があるスタッフを先に休みに割り当て
+        for (const staffId of staffWithApprovedLeave) {
+          if (newCellShifts[staffId]) {
+            newCellShifts[staffId][dayIdx] = "dayoff";
+          }
+        }
+
+        // 残りのスタッフをシャッフルして割り当て
+        const remainingStaff = staffIds.filter(
+          (id) => !staffWithApprovedLeave.includes(id)
+        );
+        const shuffledStaff = [...remainingStaff].sort(
+          () => Math.random() - 0.5
+        );
 
         let staffIndex = 0;
 
@@ -1142,25 +1165,6 @@ export default function AdminCreateShiftPage() {
           if (staffIndex < shuffledStaff.length) {
             newCellShifts[shuffledStaff[staffIndex]][dayIdx] = "dayoff";
             staffIndex++;
-          }
-        }
-      }
-
-      // Phase 1.5: 承認済み休暇申請の日を強制的に休みに設定
-      for (const leave of approvedLeaves) {
-        const startDate = new Date(leave.startDate);
-        const endDate = new Date(leave.endDate);
-
-        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
-          const currentDate = addDays(month, dayIdx);
-          const currentDateStr = format(currentDate, "yyyy-MM-dd");
-
-          // 休暇期間内の日かチェック
-          if (currentDate >= startDate && currentDate <= endDate) {
-            // 該当スタッフのその日を強制的に休みに設定
-            if (newCellShifts[leave.userId]) {
-              newCellShifts[leave.userId][dayIdx] = "dayoff";
-            }
           }
         }
       }
