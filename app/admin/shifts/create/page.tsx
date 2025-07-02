@@ -146,14 +146,14 @@ const shiftTypes = [
     id: "early" as const,
     name: "早番",
     color: "bg-sky-200 text-sky-800",
-    defaultStartTime: "09:00" as const,
+    defaultStartTime: "09:30" as const,
     defaultEndTime: "19:00" as const,
   },
   {
     id: "late" as const,
     name: "遅番",
     color: "bg-violet-200 text-violet-800",
-    defaultStartTime: "11:00" as const,
+    defaultStartTime: "11:30" as const,
     defaultEndTime: "21:00" as const,
   },
   {
@@ -173,7 +173,14 @@ const shiftTypes = [
 ] as const;
 
 type ShiftType = (typeof shiftTypes)[number]["id"];
-type ShiftTime = "09:00" | "11:00" | "19:00" | "21:00" | "00:00";
+type ShiftTime =
+  | "09:00"
+  | "09:30"
+  | "11:00"
+  | "11:30"
+  | "19:00"
+  | "21:00"
+  | "00:00";
 
 // シフトの型定義を更新
 type ShiftTypeForDB = "early" | "late" | "dayoff" | "al";
@@ -720,7 +727,7 @@ export default function AdminCreateShiftPage() {
   const [newShift, setNewShift] = useState<NewShift>({
     userId: "",
     date: format(new Date(), "yyyy-MM-dd"),
-    startTime: "09:00",
+    startTime: "09:30",
     endTime: "19:00",
     type: "early",
   });
