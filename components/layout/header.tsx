@@ -131,7 +131,7 @@ export default function Header({ user }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-1 sm:gap-2 md:gap-4 min-w-0">
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-4 min-w-0 flex-1">
             <Link
               href="/dashboard"
               className="flex items-center space-x-1 sm:space-x-2 transition-colors hover:text-primary shrink-0"
@@ -140,7 +140,7 @@ export default function Header({ user }: HeaderProps) {
                 勤怠管理システム
               </span>
             </Link>
-            <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2 overflow-x-auto scrollbar-hide min-w-0 flex-1">
+            <nav className="flex items-center space-x-1 xl:space-x-2 overflow-x-auto scrollbar-hide min-w-0 flex-1 ml-2 sm:ml-4 max-w-full">
               {navigationItems.map((item) => {
                 if (item.adminOnly && user.role !== "admin") {
                   return null;
@@ -151,14 +151,17 @@ export default function Header({ user }: HeaderProps) {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center px-2 sm:px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap shrink-0 min-w-[90px] sm:min-w-[100px] justify-center",
+                      "flex items-center px-2 sm:px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap shrink-0 min-w-[70px] sm:min-w-[80px] md:min-w-[90px] lg:min-w-[100px] justify-center",
                       isActive
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                   >
                     <item.icon className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
-                    <span>{item.name}</span>
+                    <span className="hidden sm:inline">{item.name}</span>
+                    <span className="sm:hidden text-xs">
+                      {item.name.substring(0, 2)}
+                    </span>
                   </Link>
                 );
               })}
@@ -166,13 +169,14 @@ export default function Header({ user }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 shrink-0">
-            <div className="hidden lg:flex items-center gap-1 sm:gap-2">
+            <div className="hidden sm:flex items-center gap-1 sm:gap-2">
               <Link
                 href="/profile"
                 className="flex items-center text-sm text-muted-foreground hover:text-foreground whitespace-nowrap px-2 sm:px-3 py-2"
               >
                 <User className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
-                {user.name}さん
+                <span className="hidden md:inline">{user.name}さん</span>
+                <span className="md:hidden">プロフィール</span>
               </Link>
               <Button
                 variant="ghost"
@@ -182,14 +186,17 @@ export default function Header({ user }: HeaderProps) {
                 className="text-muted-foreground hover:text-foreground whitespace-nowrap px-2 sm:px-3 py-2"
               >
                 <LogOut className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
-                {isLoggingOut ? "ログアウト中..." : "ログアウト"}
+                <span className="hidden md:inline">
+                  {isLoggingOut ? "ログアウト中..." : "ログアウト"}
+                </span>
+                <span className="md:hidden">ログアウト</span>
               </Button>
             </div>
 
             {/* モバイルメニュー */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden -mr-1">
+                <Button variant="ghost" size="icon" className="sm:hidden -mr-1">
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">メニューを開く</span>
                 </Button>
