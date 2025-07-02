@@ -270,6 +270,7 @@ const ShiftCell = ({
   toggleCellSelection: (staffId: string, dayIdx: number) => void;
   isMobile?: boolean;
 }) => {
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const shiftForCell = cellShiftsRef.current?.[member.id]?.[dayIdx] ?? null;
   const shiftTypeInfo = getShiftTypeInfo(shiftForCell);
   const isSelected =
@@ -279,6 +280,7 @@ const ShiftCell = ({
 
   const onSelect = (type: ShiftType | null) => {
     handleSelectShiftType(member.id, dayIdx, type);
+    setPopoverOpen(false); // 選択時にポップアップを閉じる
   };
 
   const handleCellClick = (event: React.MouseEvent) => {
@@ -323,7 +325,7 @@ const ShiftCell = ({
             <span className="text-muted-foreground text-[10px]">-</span>
           )
         ) : (
-          <Popover>
+          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
             <PopoverTrigger asChild>
               <button className="w-full h-full flex items-center justify-center min-h-[64px]">
                 {shiftTypeInfo ? (
