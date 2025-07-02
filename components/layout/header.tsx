@@ -12,6 +12,7 @@ import {
   User,
   X,
   Settings,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -83,6 +84,12 @@ const navigationItems: {
     name: "シフト管理",
     href: "/admin/shifts/create",
     icon: Settings,
+    adminOnly: true,
+  },
+  {
+    name: "勤怠管理",
+    href: "/admin/attendance",
+    icon: Users,
     adminOnly: true,
   },
 ];
