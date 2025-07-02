@@ -54,6 +54,18 @@ export async function getUserLeaveRequests(
   );
 }
 
+// 承認済みの休暇申請一覧を取得
+export async function getApprovedLeaveRequests(): Promise<LeaveRequest[]> {
+  const q = query(
+    collection(db, LEAVES_COLLECTION),
+    where("status", "==", "approved")
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() } as LeaveRequest)
+  );
+}
+
 // 休暇申請を作成
 export async function createLeaveRequest(data: {
   userId: string;

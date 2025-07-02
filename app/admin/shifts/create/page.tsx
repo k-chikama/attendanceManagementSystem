@@ -58,6 +58,7 @@ import {
   deleteShift,
   updateShift,
 } from "@/lib/firestoreShifts";
+import { getApprovedLeaveRequests, type LeaveRequest } from "@/lib/leave";
 import AppLayout from "@/components/layout/layout";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
@@ -739,6 +740,10 @@ export default function AdminCreateShiftPage() {
   // 複数選択モードの管理
   const [multiSelectMode, setMultiSelectMode] = useState(false);
 
+  // 休暇申請承認済みの状態
+  const [approvedLeaves, setApprovedLeaves] = useState<LeaveRequest[]>([]);
+  const [userMap, setUserMap] = useState<{ [userId: string]: string }>({});
+
   // 初期化
   useEffect(() => {
     const obj: { [staffId: string]: (ShiftType | null)[] } = {};
@@ -776,6 +781,17 @@ export default function AdminCreateShiftPage() {
         const m = month.getMonth() + 1;
         const shifts = await getShiftsByMonth(year, m);
         setExistingShifts(shifts);
+
+        // 承認済みの休暇申請を取得
+        const leaves = await getApprovedLeaveRequests();
+        setApprovedLeaves(leaves);
+
+        // ユーザー名マッピングを作成
+        const userMapping: { [userId: string]: string } = {};
+        allStaff.forEach((user) => {
+          userMapping[user.id] = user.name;
+        });
+        setUserMap(userMapping);
       } catch (error) {
         console.error("データの読み込みに失敗:", error);
         toast({
@@ -1650,6 +1666,75 @@ export default function AdminCreateShiftPage() {
   return (
     <AppLayout>
       <div className="container mx-auto py-4 px-2 sm:py-8 sm:px-6 lg:px-8">
+        {/* 休暇申請承認済みリスト */}
+        {approvedLeaves.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Calendar className="h-5 w-5 mr-2" />
+                休暇申請承認済み一覧
+              </CardTitle>
+              <CardDescription>
+                承認済みの休暇申請があるスタッフの一覧です。シフト作成時の参考にしてください。
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>申請者名</TableHead>
+                      <TableHead>種類</TableHead>
+                      <TableHead>期間</TableHead>
+                      <TableHead>理由</TableHead>
+                      <TableHead>承認日</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {approvedLeaves
+                      .sort(
+                        (a, b) =>
+                          new Date(a.startDate).getTime() -
+                          new Date(b.startDate).getTime()
+                      )
+                      .map((leave) => (
+                        <TableRow key={leave.id}>
+                          <TableCell className="font-medium">
+                            {userMap[leave.userId] || "不明"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{leave.type}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {format(new Date(leave.startDate), "yyyy/MM/dd", {
+                              locale: ja,
+                            })}{" "}
+                            〜{" "}
+                            {format(new Date(leave.endDate), "yyyy/MM/dd", {
+                              locale: ja,
+                            })}
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate">
+                            {leave.reason || "-"}
+                          </TableCell>
+                          <TableCell>
+                            {leave.approvedAt
+                              ? format(
+                                  new Date(leave.approvedAt),
+                                  "yyyy/MM/dd",
+                                  { locale: ja }
+                                )
+                              : "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center mb-2 mt-2">
