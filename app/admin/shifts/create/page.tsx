@@ -1047,605 +1047,201 @@ export default function AdminCreateShiftPage() {
     const staffIds = staff.map((s) => s.id);
     const numStaff = staffIds.length;
 
-    // 6人ピッタリの場合の特別ロジック
-    if (numStaff === 6) {
-      if (numStaff < 5) {
-        toast({
-          variant: "destructive",
-          title: "スタッフ不足",
-          description: "自動作成には最低5人のスタッフが必要です。",
-        });
-        return;
-      }
-      if (daysInMonth < 8) {
-        toast({
-          variant: "destructive",
-          title: "作成不可",
-          description: `月の日数が${daysInMonth}日のため、8日間の休みを確保できません。`,
-        });
-        return;
-      }
-      const MAX_ATTEMPTS = 50;
-      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-        const newCellShifts: { [staffId: string]: (ShiftType | null)[] } = {};
-        // Phase 1: 各日ごとに早番2人・遅番2人・残り2人はランダム
-        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
-          const shiftsForDay: ShiftType[] = [];
-          for (let i = 0; i < 2; i++) shiftsForDay.push("early");
-          for (let i = 0; i < 2; i++) shiftsForDay.push("late");
-          for (let i = 0; i < 2; i++)
-            shiftsForDay.push(Math.random() < 0.5 ? "early" : "late");
-          shiftsForDay.sort(() => Math.random() - 0.5);
-          staffIds.forEach((staffId, i) => {
-            if (!newCellShifts[staffId]) {
-              newCellShifts[staffId] = Array(daysInMonth).fill(null);
-            }
-            newCellShifts[staffId][dayIdx] = shiftsForDay[i];
-          });
-        }
-        // Phase 2: 各スタッフに8日分の休み（dayoff）をランダムに割り当て
-        for (const staffId of staffIds) {
-          const dayIndexes = Array.from({ length: daysInMonth }, (_, i) => i);
-          dayIndexes.sort(() => Math.random() - 0.5);
-
-          // 連続休みを避けるための改善版
-          const selectedDays: number[] = [];
-          const maxConsecutiveOff = 2; // 最大2日連続まで許可
-
-          for (
-            let i = 0;
-            i < dayIndexes.length && selectedDays.length < 8;
-            i++
-          ) {
-            const dayIdx = dayIndexes[i];
-
-            // 連続休みチェック
-            let canAdd = true;
-            if (selectedDays.length > 0) {
-              const lastSelected = selectedDays[selectedDays.length - 1];
-              // 直前の選択日と連続しているかチェック
-              if (Math.abs(dayIdx - lastSelected) <= maxConsecutiveOff) {
-                canAdd = false;
-              }
-            }
-
-            if (canAdd) {
-              selectedDays.push(dayIdx);
-            }
-          }
-
-          // 8日に満たない場合は残りから追加（連続チェックは緩和）
-          if (selectedDays.length < 8) {
-            for (
-              let i = 0;
-              i < dayIndexes.length && selectedDays.length < 8;
-              i++
-            ) {
-              const dayIdx = dayIndexes[i];
-              if (!selectedDays.includes(dayIdx)) {
-                selectedDays.push(dayIdx);
-              }
-            }
-          }
-
-          // 選択された日を休みに設定
-          for (const dayIdx of selectedDays) {
-            newCellShifts[staffId][dayIdx] = "dayoff";
-          }
-        }
-
-        // Phase 3: 平日・特別日の出勤人数調整
-        let adjustmentsMade = true;
-        let maxIterations = 10;
-        while (adjustmentsMade && maxIterations > 0) {
-          adjustmentsMade = false;
-          maxIterations--;
-          for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
-            const currentDate = addDays(month, dayIdx);
-            const isSpecial = isSpecialDay(currentDate);
-            const workingStaff = staffIds.filter(
-              (id) => newCellShifts[id][dayIdx] !== "dayoff"
-            );
-            if (isSpecial) {
-              // 特別日は5人以上
-              if (workingStaff.length < 5) {
-                const neededStaff = 5 - workingStaff.length;
-                const staffWithDayOff = staffIds.filter(
-                  (id) => newCellShifts[id][dayIdx] === "dayoff"
-                );
-                for (
-                  let i = 0;
-                  i < neededStaff && i < staffWithDayOff.length;
-                  i++
-                ) {
-                  const staffToMove = staffWithDayOff[i];
-                  let moved = false;
-                  for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
-                    if (
-                      otherDay !== dayIdx &&
-                      newCellShifts[staffToMove][otherDay] !== "dayoff"
-                    ) {
-                      const otherDate = addDays(month, otherDay);
-                      const otherIsSpecial = isSpecialDay(otherDate);
-                      const otherWorkingStaff = staffIds.filter(
-                        (id) => newCellShifts[id][otherDay] !== "dayoff"
-                      );
-                      // 平日で4人以上いる場合はスワップ可能
-                      if (!otherIsSpecial && otherWorkingStaff.length > 3) {
-                        const tempShift = newCellShifts[staffToMove][dayIdx];
-                        newCellShifts[staffToMove][dayIdx] =
-                          newCellShifts[staffToMove][otherDay];
-                        newCellShifts[staffToMove][otherDay] = tempShift;
-                        adjustmentsMade = true;
-                        moved = true;
-                        break;
-                      }
-                    }
-                  }
-                }
-              }
-            } else {
-              // 平日は3人または4人
-              if (workingStaff.length < 3 || workingStaff.length > 4) {
-                if (workingStaff.length > 4) {
-                  let excessCount = workingStaff.length - 4;
-                  for (const staffId of workingStaff) {
-                    if (excessCount <= 0) break;
-                    let moved = false;
-                    for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
-                      if (otherDay === dayIdx) continue;
-                      const otherDate = addDays(month, otherDay);
-                      if (
-                        isSpecialDay(otherDate) &&
-                        newCellShifts[staffId][otherDay] === "dayoff"
-                      ) {
-                        const tempShift = newCellShifts[staffId][dayIdx];
-                        newCellShifts[staffId][dayIdx] = "dayoff";
-                        newCellShifts[staffId][otherDay] = tempShift;
-                        adjustmentsMade = true;
-                        moved = true;
-                        break;
-                      }
-                    }
-                    if (moved) excessCount--;
-                  }
-                } else {
-                  const neededStaff = 3 - workingStaff.length;
-                  const staffWithDayOff = staffIds.filter(
-                    (id) => newCellShifts[id][dayIdx] === "dayoff"
-                  );
-                  for (
-                    let i = 0;
-                    i < neededStaff && i < staffWithDayOff.length;
-                    i++
-                  ) {
-                    const staffToMove = staffWithDayOff[i];
-                    let moved = false;
-                    for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
-                      if (
-                        otherDay !== dayIdx &&
-                        newCellShifts[staffToMove][otherDay] !== "dayoff"
-                      ) {
-                        const otherDate = addDays(month, otherDay);
-                        const otherIsSpecial = isSpecialDay(otherDate);
-                        const otherWorkingStaff = staffIds.filter(
-                          (id) => newCellShifts[id][otherDay] !== "dayoff"
-                        );
-                        // 平日で4人以上いる場合はスワップ可能
-                        if (!otherIsSpecial && otherWorkingStaff.length > 5) {
-                          const tempShift = newCellShifts[staffToMove][dayIdx];
-                          newCellShifts[staffToMove][dayIdx] =
-                            newCellShifts[staffToMove][otherDay];
-                          newCellShifts[staffToMove][otherDay] = tempShift;
-                          adjustmentsMade = true;
-                          moved = true;
-                          break;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-        // Phase 4: 連続勤務日数の調整（5連勤までに制限）
-        let consecutiveAdjustmentsMade = true;
-        let consecutiveMaxIterations = 100; // 試行回数を大幅に増やす
-        while (consecutiveAdjustmentsMade && consecutiveMaxIterations > 0) {
-          consecutiveAdjustmentsMade = reduceConsecutiveWorkDays(
-            newCellShifts,
-            staffIds,
-            month,
-            daysInMonth
-          );
-          consecutiveMaxIterations--;
-        }
-        // Phase 5: 早番・遅番の比率調整
-        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
-          const workingStaffIds = staffIds.filter(
-            (id) => newCellShifts[id][dayIdx] !== "dayoff"
-          );
-          const workingStaffCount = workingStaffIds.length;
-          if (workingStaffCount === 0) continue;
-          const earlyStaffIds = workingStaffIds.filter(
-            (id) => newCellShifts[id][dayIdx] === "early"
-          );
-          const lateStaffIds = workingStaffIds.filter(
-            (id) => newCellShifts[id][dayIdx] === "late"
-          );
-          const earlyStaffCount = earlyStaffIds.length;
-          const lateStaffCount = lateStaffIds.length;
-          const isSpecial = isSpecialDay(addDays(month, dayIdx));
-          if (staffIds.length === 6) {
-            // 6人用ロジック
-            if (isSpecial) {
-              // 特別日は早番2人未満なら遅番→早番に
-              if (earlyStaffCount < 2) {
-                for (
-                  let i = 0;
-                  i < workingStaffIds.length && earlyStaffIds.length < 2;
-                  i++
-                ) {
-                  if (newCellShifts[workingStaffIds[i]][dayIdx] === "late") {
-                    newCellShifts[workingStaffIds[i]][dayIdx] = "early";
-                    earlyStaffIds.push(workingStaffIds[i]);
-                  }
-                }
-              }
-              // 特別日は遅番2人未満なら早番→遅番に
-              if (lateStaffCount < 2) {
-                for (
-                  let i = 0;
-                  i < workingStaffIds.length && lateStaffIds.length < 2;
-                  i++
-                ) {
-                  if (newCellShifts[workingStaffIds[i]][dayIdx] === "early") {
-                    newCellShifts[workingStaffIds[i]][dayIdx] = "late";
-                    lateStaffIds.push(workingStaffIds[i]);
-                  }
-                }
-              }
-            } else {
-              // 平日は早番1人未満なら遅番→早番に
-              if (earlyStaffCount < 1) {
-                for (
-                  let i = 0;
-                  i < workingStaffIds.length && earlyStaffIds.length < 1;
-                  i++
-                ) {
-                  if (newCellShifts[workingStaffIds[i]][dayIdx] === "late") {
-                    newCellShifts[workingStaffIds[i]][dayIdx] = "early";
-                    earlyStaffIds.push(workingStaffIds[i]);
-                  }
-                }
-              }
-              // 平日は遅番2人未満なら早番→遅番に
-              if (lateStaffCount < 2) {
-                for (
-                  let i = 0;
-                  i < workingStaffIds.length && lateStaffIds.length < 2;
-                  i++
-                ) {
-                  if (newCellShifts[workingStaffIds[i]][dayIdx] === "early") {
-                    newCellShifts[workingStaffIds[i]][dayIdx] = "late";
-                    lateStaffIds.push(workingStaffIds[i]);
-                  }
-                }
-              }
-            }
-          } else {
-            // 従来のロジック
-            const minEarly = Math.max(2, Math.floor(workingStaffCount * 0.4));
-            const minLate = Math.max(2, Math.floor(workingStaffCount * 0.4));
-            // 早番が多すぎる場合（遅番が不足）
-            if (earlyStaffCount > minEarly && lateStaffCount < minLate) {
-              const excessEarly = earlyStaffCount - minEarly;
-              const neededLate = minLate - lateStaffCount;
-              const changeCount = Math.min(excessEarly, neededLate);
-              for (let i = 0; i < changeCount; i++) {
-                newCellShifts[earlyStaffIds[i]][dayIdx] = "late";
-              }
-            }
-            // 遅番が多すぎる場合（早番が不足）
-            if (lateStaffCount > minLate && earlyStaffCount < minEarly) {
-              const excessLate = lateStaffCount - minLate;
-              const neededEarly = minEarly - earlyStaffCount;
-              const changeCount = Math.min(excessLate, neededEarly);
-              for (let i = 0; i < changeCount; i++) {
-                newCellShifts[lateStaffIds[i]][dayIdx] = "early";
-              }
-            }
-          }
-        }
-        // バリデーション・結果反映
-        cellShiftsRef.current = newCellShifts;
-        forceUpdate();
-        const warnings = validateAllShifts(
-          newCellShifts,
-          staff,
-          month,
-          daysInMonth
-        );
-        setValidationWarnings(warnings);
-        toast({
-          title: "シフト自動作成完了",
-          description:
-            "シフト案が作成されました。内容を確認して保存してください。",
-        });
-        return;
-      }
+    // 5人、6人、7人のみ対応
+    if (numStaff < 5 || numStaff > 7) {
       toast({
         variant: "destructive",
-        title: "自動作成失敗",
-        description:
-          "条件を満たすシフトを作成できませんでした。もう一度お試しください。",
+        title: "スタッフ数エラー",
+        description: "自動作成は5人、6人、7人の場合のみ対応しています。",
       });
       return;
     }
-    // それ以外（従来のロジック）
-    const MAX_ATTEMPTS = 50;
+
+    if (daysInMonth < 8) {
+      toast({
+        variant: "destructive",
+        title: "作成不可",
+        description: `月の日数が${daysInMonth}日のため、8日間の休みを確保できません。`,
+      });
+      return;
+    }
+
+    const MAX_ATTEMPTS = 30;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const newCellShifts: {
-        [staffId: string]: (ShiftType | null)[];
-      } = {};
+      const newCellShifts: { [staffId: string]: (ShiftType | null)[] } = {};
 
-      // Phase 1: Fill all days with early and late shifts (minimum 3 each)
+      // 初期化
+      staffIds.forEach((staffId) => {
+        newCellShifts[staffId] = Array(daysInMonth).fill(null);
+      });
+
+      // Phase 1: 各日ごとに早番・遅番・休みをランダム配置
       for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
-        const shiftsForDay: ShiftType[] = [];
+        const currentDate = addDays(month, dayIdx);
+        const isSpecial = isSpecialDay(currentDate);
 
-        // Ensure minimum 3 early and 3 late shifts
-        for (let i = 0; i < 3; i++) shiftsForDay.push("early");
-        for (let i = 0; i < 3; i++) shiftsForDay.push("late");
+        let earlyCount: number, lateCount: number, offCount: number;
 
-        // Fill remaining slots randomly
-        const remainingSlots = numStaff - 6;
-        for (let i = 0; i < remainingSlots; i++) {
-          shiftsForDay.push(Math.random() < 0.5 ? "early" : "late");
-        }
-
-        // Shuffle the shifts
-        shiftsForDay.sort(() => Math.random() - 0.5);
-
-        // Assign to each staff member
-        staffIds.forEach((staffId, i) => {
-          if (!newCellShifts[staffId]) {
-            newCellShifts[staffId] = Array(daysInMonth).fill(null);
-          }
-          newCellShifts[staffId][dayIdx] = shiftsForDay[i];
-        });
-      }
-
-      // Phase 2: Randomly assign 8 days off for each staff member
-      for (const staffId of staffIds) {
-        const dayIndexes = Array.from({ length: daysInMonth }, (_, i) => i);
-        dayIndexes.sort(() => Math.random() - 0.5);
-
-        // Assign first 8 random days as dayoff
-        for (let i = 0; i < 8; i++) {
-          newCellShifts[staffId][dayIndexes[i]] = "dayoff";
-        }
-      }
-
-      // Phase 3: Adjust staff count for weekdays vs special days
-      let adjustmentsMade = true;
-      let maxIterations = 10; // 無限ループを防ぐ
-
-      while (adjustmentsMade && maxIterations > 0) {
-        adjustmentsMade = false;
-        maxIterations--;
-
-        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
-          const currentDate = addDays(month, dayIdx);
-          const isSpecial = isSpecialDay(currentDate);
-          const workingStaff = staffIds.filter(
-            (id) => newCellShifts[id][dayIdx] !== "dayoff"
-          );
-
+        // スタッフ人数ごとの配分
+        if (numStaff === 5) {
           if (isSpecial) {
-            // 土日祝日・8のつく日は6人以上確保（全員出勤でもOK）
-            if (workingStaff.length < 6) {
-              const neededStaff = 6 - workingStaff.length;
-              const staffWithDayOff = staffIds.filter(
-                (id) => newCellShifts[id][dayIdx] === "dayoff"
-              );
-
-              // 平日で4人を超えているスタッフからスワップ
-              for (
-                let i = 0;
-                i < neededStaff && i < staffWithDayOff.length;
-                i++
-              ) {
-                const staffToMove = staffWithDayOff[i];
-                let moved = false;
-
-                // このスタッフの平日勤務日を探す
-                for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
-                  if (
-                    otherDay !== dayIdx &&
-                    newCellShifts[staffToMove][otherDay] !== "dayoff"
-                  ) {
-                    const otherDate = addDays(month, otherDay);
-                    const otherIsSpecial = isSpecialDay(otherDate);
-                    const otherWorkingStaff = staffIds.filter(
-                      (id) => newCellShifts[id][otherDay] !== "dayoff"
-                    );
-
-                    // 平日で4人以上いる場合はスワップ可能
-                    if (!otherIsSpecial && otherWorkingStaff.length > 4) {
-                      // スワップ実行（休み日数は変わらない）
-                      const tempShift = newCellShifts[staffToMove][dayIdx];
-                      newCellShifts[staffToMove][dayIdx] =
-                        newCellShifts[staffToMove][otherDay];
-                      newCellShifts[staffToMove][otherDay] = tempShift;
-                      adjustmentsMade = true;
-                      moved = true;
-                      break;
-                    }
-                  }
-                }
-              }
-            }
+            earlyCount = 2;
+            lateCount = 3;
+            offCount = 0;
           } else {
-            // 平日は4人または5人（スワップ方式で休み日数を維持）
-            if (workingStaff.length < 4 || workingStaff.length > 5) {
-              if (workingStaff.length > 5) {
-                // 5人を超えている場合、余分なスタッフを土日祝日・8のつく日にスワップ
-                let excessCount = workingStaff.length - 5;
+            earlyCount = 2;
+            lateCount = 2;
+            offCount = 1;
+          }
+        } else if (numStaff === 6) {
+          if (isSpecial) {
+            earlyCount = 2;
+            lateCount = 3;
+            offCount = 1;
+          } else {
+            earlyCount = 2;
+            lateCount = 2;
+            offCount = 2;
+          }
+        } else {
+          // 7人
+          if (isSpecial) {
+            earlyCount = 3;
+            lateCount = 3;
+            offCount = 1;
+          } else {
+            earlyCount = 2;
+            lateCount = 3;
+            offCount = 2;
+          }
+        }
 
-                // 超過している人数分、移動できるスタッフを全員の中から探す
-                for (const staffId of workingStaff) {
-                  if (excessCount <= 0) {
-                    break; // 必要な人数を移動し終えたらループを抜ける
-                  }
+        // スタッフをシャッフルして割り当て
+        const shuffledStaff = [...staffIds].sort(() => Math.random() - 0.5);
 
-                  let moved = false;
-                  // このスタッフが休んでいる特別日を探してスワップする
-                  for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
-                    if (otherDay === dayIdx) continue;
+        let staffIndex = 0;
 
-                    const otherDate = addDays(month, otherDay);
-                    if (
-                      isSpecialDay(otherDate) &&
-                      newCellShifts[staffId][otherDay] === "dayoff"
-                    ) {
-                      // スワップ実行（本人の休み日数は変わらない）
-                      const tempShift = newCellShifts[staffId][dayIdx];
-                      newCellShifts[staffId][dayIdx] = "dayoff";
-                      newCellShifts[staffId][otherDay] = tempShift;
-                      adjustmentsMade = true;
-                      moved = true;
-                      break; // スワップ先が見つかったので次のスタッフへ
-                    }
-                  }
+        // 早番を割り当て
+        for (let i = 0; i < earlyCount; i++) {
+          if (staffIndex < shuffledStaff.length) {
+            newCellShifts[shuffledStaff[staffIndex]][dayIdx] = "early";
+            staffIndex++;
+          }
+        }
 
-                  if (moved) {
-                    excessCount--; // 移動成功、残りの超過人数を減らす
-                  }
-                }
-              } else {
-                // 4人未満の場合、土日祝日・8のつく日で6人を超えているスタッフからスワップ
-                const neededStaff = 4 - workingStaff.length;
-                const staffWithDayOff = staffIds.filter(
-                  (id) => newCellShifts[id][dayIdx] === "dayoff"
-                );
+        // 遅番を割り当て
+        for (let i = 0; i < lateCount; i++) {
+          if (staffIndex < shuffledStaff.length) {
+            newCellShifts[shuffledStaff[staffIndex]][dayIdx] = "late";
+            staffIndex++;
+          }
+        }
 
-                for (
-                  let i = 0;
-                  i < neededStaff && i < staffWithDayOff.length;
-                  i++
-                ) {
-                  const staffToMove = staffWithDayOff[i];
-                  let moved = false;
+        // 休みを割り当て
+        for (let i = 0; i < offCount; i++) {
+          if (staffIndex < shuffledStaff.length) {
+            newCellShifts[shuffledStaff[staffIndex]][dayIdx] = "dayoff";
+            staffIndex++;
+          }
+        }
+      }
 
-                  // このスタッフの土日祝日・8のつく日勤務日を探す
-                  for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
-                    if (
-                      otherDay !== dayIdx &&
-                      newCellShifts[staffToMove][otherDay] !== "dayoff"
-                    ) {
-                      const otherDate = addDays(month, otherDay);
-                      const otherIsSpecial = isSpecialDay(otherDate);
-                      const otherWorkingStaff = staffIds.filter(
-                        (id) => newCellShifts[id][otherDay] !== "dayoff"
-                      );
+      // Phase 2: 各スタッフの休み日数を8日に調整
+      for (const staffId of staffIds) {
+        const staffShifts = newCellShifts[staffId];
+        const offDays = staffShifts.filter(
+          (shift) => shift === "dayoff"
+        ).length;
 
-                      // 土日祝日・8のつく日で6人以上いる場合はスワップ可能
-                      if (otherIsSpecial && otherWorkingStaff.length > 6) {
-                        // スワップ実行（休み日数は変わらない）
-                        const tempShift = newCellShifts[staffToMove][dayIdx];
-                        newCellShifts[staffToMove][dayIdx] =
-                          newCellShifts[staffToMove][otherDay];
-                        newCellShifts[staffToMove][otherDay] = tempShift;
-                        adjustmentsMade = true;
-                        moved = true;
-                        break;
-                      }
-                    }
-                  }
-                }
-              }
+        if (offDays < 8) {
+          // 8日に満たない場合：平日の早番→休み、なければ遅番→休み
+          const neededOffDays = 8 - offDays;
+          let changedCount = 0;
+
+          for (
+            let dayIdx = 0;
+            dayIdx < daysInMonth && changedCount < neededOffDays;
+            dayIdx++
+          ) {
+            const currentDate = addDays(month, dayIdx);
+            const isSpecial = isSpecialDay(currentDate);
+
+            if (!isSpecial && staffShifts[dayIdx] === "early") {
+              staffShifts[dayIdx] = "dayoff";
+              changedCount++;
+            }
+          }
+
+          // 早番が足りない場合は遅番から変更
+          for (
+            let dayIdx = 0;
+            dayIdx < daysInMonth && changedCount < neededOffDays;
+            dayIdx++
+          ) {
+            const currentDate = addDays(month, dayIdx);
+            const isSpecial = isSpecialDay(currentDate);
+
+            if (!isSpecial && staffShifts[dayIdx] === "late") {
+              staffShifts[dayIdx] = "dayoff";
+              changedCount++;
+            }
+          }
+        } else if (offDays > 8) {
+          // 8日を超える場合：土日祝8の付く日の休み→遅番、なければ平日の休み→遅番
+          const excessOffDays = offDays - 8;
+          let changedCount = 0;
+
+          // まず土日祝8の付く日の休みを遅番に変更
+          for (
+            let dayIdx = 0;
+            dayIdx < daysInMonth && changedCount < excessOffDays;
+            dayIdx++
+          ) {
+            const currentDate = addDays(month, dayIdx);
+            const isSpecial = isSpecialDay(currentDate);
+
+            if (isSpecial && staffShifts[dayIdx] === "dayoff") {
+              staffShifts[dayIdx] = "late";
+              changedCount++;
+            }
+          }
+
+          // 土日祝8の付く日の休みが足りない場合は平日の休みを遅番に変更
+          for (
+            let dayIdx = 0;
+            dayIdx < daysInMonth && changedCount < excessOffDays;
+            dayIdx++
+          ) {
+            const currentDate = addDays(month, dayIdx);
+            const isSpecial = isSpecialDay(currentDate);
+
+            if (!isSpecial && staffShifts[dayIdx] === "dayoff") {
+              staffShifts[dayIdx] = "late";
+              changedCount++;
             }
           }
         }
       }
 
-      // Phase 4: 連続勤務日数の調整（5連勤までに制限）
-      let consecutiveAdjustmentsMade = true;
-      let consecutiveMaxIterations = 100; // 試行回数を大幅に増やす
-      while (consecutiveAdjustmentsMade && consecutiveMaxIterations > 0) {
-        consecutiveAdjustmentsMade = reduceConsecutiveWorkDays(
-          newCellShifts,
-          staffIds,
-          month,
-          daysInMonth
-        );
-        consecutiveMaxIterations--;
-      }
-
-      // Phase 5: 早番・遅番の比率調整
-      for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
-        const workingStaffIds = staffIds.filter(
-          (id) => newCellShifts[id][dayIdx] !== "dayoff"
-        );
-        const workingStaffCount = workingStaffIds.length;
-
-        if (workingStaffCount === 0) continue;
-
-        const earlyStaffIds = workingStaffIds.filter(
-          (id) => newCellShifts[id][dayIdx] === "early"
-        );
-        const lateStaffIds = workingStaffIds.filter(
-          (id) => newCellShifts[id][dayIdx] === "late"
-        );
-        const earlyStaffCount = earlyStaffIds.length;
-        const lateStaffCount = lateStaffIds.length;
-        const minEarly = Math.max(2, Math.floor(workingStaffCount * 0.4));
-        const minLate = Math.max(2, Math.floor(workingStaffCount * 0.4));
-
-        // 早番が多すぎる場合（遅番が不足）
-        if (earlyStaffCount > minEarly && lateStaffCount < minLate) {
-          const excessEarly = earlyStaffCount - minEarly;
-          const neededLate = minLate - lateStaffCount;
-          const changeCount = Math.min(excessEarly, neededLate);
-
-          // 早番のスタッフを遅番に変更
-          for (let i = 0; i < changeCount; i++) {
-            newCellShifts[earlyStaffIds[i]][dayIdx] = "late";
-          }
-        }
-
-        // 遅番が多すぎる場合（早番が不足）
-        if (lateStaffCount > minLate && earlyStaffCount < minEarly) {
-          const excessLate = lateStaffCount - minLate;
-          const neededEarly = minEarly - earlyStaffCount;
-          const changeCount = Math.min(excessLate, neededEarly);
-
-          // 遅番のスタッフを早番に変更
-          for (let i = 0; i < changeCount; i++) {
-            newCellShifts[lateStaffIds[i]][dayIdx] = "early";
-          }
-        }
-      }
-
-      // Apply the generated shifts
-      cellShiftsRef.current = newCellShifts;
-      forceUpdate();
-
+      // Phase 3: バリデーションチェック
       const warnings = validateAllShifts(
         newCellShifts,
         staff,
         month,
         daysInMonth
       );
-      setValidationWarnings(warnings);
 
-      toast({
-        title: "シフト自動作成完了",
-        description:
-          "シフト案が作成されました。内容を確認して保存してください。",
-      });
-      return;
+      // 警告が少ない場合は採用
+      if (warnings.length <= 5) {
+        cellShiftsRef.current = newCellShifts;
+        forceUpdate();
+        setValidationWarnings(warnings);
+        toast({
+          title: "シフト自動作成完了",
+          description: `シフト案が作成されました。警告: ${warnings.length}件`,
+        });
+        return;
+      }
     }
 
     toast({
@@ -1654,7 +1250,7 @@ export default function AdminCreateShiftPage() {
       description:
         "条件を満たすシフトを作成できませんでした。もう一度お試しください。",
     });
-  }, [staff, daysInMonth, toast]);
+  }, [staff, daysInMonth, toast, month]);
 
   // シフトタイプの検索を最適化
   const getShiftTypeInfo = useCallback(
@@ -1778,8 +1374,19 @@ export default function AdminCreateShiftPage() {
                   {">"}
                 </Button>
               </div>
+              {/* 自動作成ボタン */}
+              <div className="flex items-center gap-2 order-2 md:order-none">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleAutoGenerateShifts}
+                  className="h-8 px-3 text-xs"
+                >
+                  自動作成
+                </Button>
+              </div>
               {/* 複数選択モードボタン（スマホは下に左寄せ） */}
-              <div className="flex items-center gap-2 mt-2 md:mt-0 order-2 md:order-none w-full md:w-auto">
+              <div className="flex items-center gap-2 mt-2 md:mt-0 order-3 md:order-none w-full md:w-auto">
                 <Button
                   variant={multiSelectMode ? "default" : "outline"}
                   size="sm"
