@@ -129,18 +129,23 @@ export default function Header({ user }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-1 sm:gap-2 md:gap-4 min-w-0 flex-1">
+      <div className="w-full px-2 sm:px-4 lg:px-6">
+        <div className="flex h-16 items-center w-full">
+          {/* ロゴ部分 */}
+          <div className="flex items-center shrink-0 mr-4">
             <Link
               href="/dashboard"
-              className="flex items-center space-x-1 sm:space-x-2 transition-colors hover:text-primary shrink-0"
+              className="flex items-center space-x-1 sm:space-x-2 transition-colors hover:text-primary"
             >
               <span className="text-sm sm:text-base md:text-lg font-semibold tracking-tight whitespace-nowrap">
                 勤怠管理システム
               </span>
             </Link>
-            <nav className="flex items-center space-x-1 xl:space-x-2 overflow-x-auto scrollbar-hide min-w-0 flex-1 ml-2 sm:ml-4 max-w-full">
+          </div>
+
+          {/* ナビゲーション部分 - 画面幅の大部分を占める */}
+          <div className="flex-1 min-w-0">
+            <nav className="flex items-center space-x-1 xl:space-x-2 overflow-x-auto scrollbar-hide w-full nav-scroll">
               {navigationItems.map((item) => {
                 if (item.adminOnly && user.role !== "admin") {
                   return null;
@@ -168,7 +173,8 @@ export default function Header({ user }: HeaderProps) {
             </nav>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 shrink-0">
+          {/* ユーザー情報部分 */}
+          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 shrink-0 ml-4">
             <div className="hidden sm:flex items-center gap-1 sm:gap-2">
               <Link
                 href="/profile"

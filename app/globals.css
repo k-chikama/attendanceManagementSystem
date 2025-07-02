@@ -91,3 +91,17 @@
     display: none; /* Safari and Chrome */
   }
 }
+
+/* ナビバーの全体表示用スタイル */
+@layer components {
+  .nav-container {
+    width: 100%;
+    max-width: none;
+  }
+
+  .nav-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+}
