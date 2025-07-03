@@ -1500,6 +1500,247 @@ export default function AdminCreateShiftPage() {
         }
       }
 
+      // Phase 3: 5連勤以上の箇所を調整
+      // 人数制限をチェックする関数
+      const checkStaffingRequirements = (
+        shifts: { [staffId: string]: (ShiftType | null)[] },
+        dayIdx: number,
+        staffIds: string[],
+        numStaff: number
+      ): boolean => {
+        const currentDate = addDays(month, dayIdx);
+        const isSpecial = isSpecialDay(currentDate);
+
+        const workingStaffIds = staffIds.filter(
+          (id) => shifts[id]?.[dayIdx] && shifts[id][dayIdx] !== "dayoff"
+        );
+        const workingStaffCount = workingStaffIds.length;
+
+        const earlyStaffCount = workingStaffIds.filter(
+          (id) => shifts[id][dayIdx] === "early"
+        ).length;
+        const lateStaffCount = workingStaffIds.filter(
+          (id) => shifts[id][dayIdx] === "late"
+        ).length;
+
+        if (numStaff === 5) {
+          if (isSpecial) {
+            // 土日祝8のつく日: 早番2人、遅番2-3、休み0-1、全体で4-5人
+            return (
+              earlyStaffCount === 2 &&
+              lateStaffCount >= 2 &&
+              lateStaffCount <= 3 &&
+              workingStaffCount >= 4 &&
+              workingStaffCount <= 5
+            );
+          } else {
+            // 平日: 早番1-2人、遅番2-3、休み1-2、全体で3-5人
+            return (
+              earlyStaffCount >= 1 &&
+              earlyStaffCount <= 2 &&
+              lateStaffCount >= 2 &&
+              lateStaffCount <= 3 &&
+              workingStaffCount >= 3 &&
+              workingStaffCount <= 5
+            );
+          }
+        } else if (numStaff === 6) {
+          if (isSpecial) {
+            // 土日祝8のつく日: 早番2-3人、遅番3-4人、休み0-1人、全体で5-6人
+            return (
+              earlyStaffCount >= 2 &&
+              earlyStaffCount <= 3 &&
+              lateStaffCount >= 3 &&
+              lateStaffCount <= 4 &&
+              workingStaffCount >= 5 &&
+              workingStaffCount <= 6
+            );
+          } else {
+            // 平日: 早番1-2人、遅番2-3人、休み1-2人、全体で3-5人
+            return (
+              earlyStaffCount >= 1 &&
+              earlyStaffCount <= 2 &&
+              lateStaffCount >= 2 &&
+              lateStaffCount <= 3 &&
+              workingStaffCount >= 3 &&
+              workingStaffCount <= 5
+            );
+          }
+        } else if (numStaff === 7) {
+          if (isSpecial) {
+            // 土日祝8のつく日: 早番3人、遅番3-4人、休み0-1人、全体で6-7人
+            return (
+              earlyStaffCount === 3 &&
+              lateStaffCount >= 3 &&
+              lateStaffCount <= 4 &&
+              workingStaffCount >= 6 &&
+              workingStaffCount <= 7
+            );
+          } else {
+            // 平日: 早番2人、遅番2-3、休み2-3、全体で4-5人
+            return (
+              earlyStaffCount === 2 &&
+              lateStaffCount >= 2 &&
+              lateStaffCount <= 3 &&
+              workingStaffCount >= 4 &&
+              workingStaffCount <= 5
+            );
+          }
+        }
+        return false;
+      };
+
+      // 連勤日数をチェックする関数
+      const getConsecutiveWorkDays = (
+        shifts: (ShiftType | null)[],
+        startDay: number
+      ): { count: number; start: number; end: number } => {
+        let count = 0;
+        let start = startDay;
+        let end = startDay;
+
+        // 前方向に連勤をカウント
+        for (let i = startDay; i >= 0; i--) {
+          if (shifts[i] && shifts[i] !== "dayoff" && shifts[i] !== "seminar") {
+            count++;
+            start = i;
+          } else {
+            break;
+          }
+        }
+
+        // 後方向に連勤をカウント
+        for (let i = startDay + 1; i < shifts.length; i++) {
+          if (shifts[i] && shifts[i] !== "dayoff" && shifts[i] !== "seminar") {
+            count++;
+            end = i;
+          } else {
+            break;
+          }
+        }
+
+        return { count, start, end };
+      };
+
+      // 各スタッフの5連勤以上をチェックして調整
+      for (const staffId of staffIds) {
+        const staffShifts = newCellShifts[staffId];
+
+        // 連勤箇所を特定
+        for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+          if (
+            staffShifts[dayIdx] &&
+            staffShifts[dayIdx] !== "dayoff" &&
+            staffShifts[dayIdx] !== "seminar"
+          ) {
+            const consecutive = getConsecutiveWorkDays(staffShifts, dayIdx);
+
+            if (consecutive.count >= 5) {
+              // 5連勤以上の場合、連勤期間中の1日を休みに変更
+              for (
+                let swapDay = consecutive.start;
+                swapDay <= consecutive.end;
+                swapDay++
+              ) {
+                const swapDate = addDays(month, swapDay);
+                const swapDateStr = format(swapDate, "yyyy-MM-dd");
+
+                // 承認済み休暇の日は変更しない
+                const hasApprovedLeave = approvedLeaves.some((leave) => {
+                  return (
+                    leave.userId === staffId &&
+                    swapDateStr >= leave.startDate &&
+                    swapDateStr <= leave.endDate
+                  );
+                });
+
+                if (hasApprovedLeave) continue;
+
+                // この日を休みに変更した場合の人数制限チェック
+                const tempShifts = JSON.parse(JSON.stringify(newCellShifts));
+                const originalShift = tempShifts[staffId][swapDay];
+                tempShifts[staffId][swapDay] = "dayoff";
+
+                if (
+                  checkStaffingRequirements(
+                    tempShifts,
+                    swapDay,
+                    staffIds,
+                    numStaff
+                  )
+                ) {
+                  // 人数制限を満たす場合、この日を休みに変更
+                  newCellShifts[staffId][swapDay] = "dayoff";
+
+                  // 休みが増えたため、そのスタッフの他の休み箇所で出勤に変更
+                  for (let otherDay = 0; otherDay < daysInMonth; otherDay++) {
+                    // 連勤期間内は除外
+                    if (
+                      otherDay >= consecutive.start &&
+                      otherDay <= consecutive.end
+                    ) {
+                      continue;
+                    }
+
+                    const otherDate = addDays(month, otherDay);
+                    const otherDateStr = format(otherDate, "yyyy-MM-dd");
+
+                    // 承認済み休暇の日は変更しない
+                    const hasOtherApprovedLeave = approvedLeaves.some(
+                      (leave) => {
+                        return (
+                          leave.userId === staffId &&
+                          otherDateStr >= leave.startDate &&
+                          otherDateStr <= leave.endDate
+                        );
+                      }
+                    );
+
+                    if (hasOtherApprovedLeave) continue;
+
+                    if (newCellShifts[staffId][otherDay] === "dayoff") {
+                      // この日を出勤に変更した場合の人数制限チェック
+                      const tempShifts2 = JSON.parse(
+                        JSON.stringify(newCellShifts)
+                      );
+                      tempShifts2[staffId][otherDay] = originalShift;
+
+                      if (
+                        checkStaffingRequirements(
+                          tempShifts2,
+                          otherDay,
+                          staffIds,
+                          numStaff
+                        )
+                      ) {
+                        // 人数制限を満たす場合、この日を出勤に変更
+                        newCellShifts[staffId][otherDay] = originalShift;
+
+                        // 変更後の連勤日数をチェック
+                        const newConsecutive = getConsecutiveWorkDays(
+                          newCellShifts[staffId],
+                          otherDay
+                        );
+
+                        // 5連勤以上にならない場合のみ確定
+                        if (newConsecutive.count < 5) {
+                          break; // スワップ成功
+                        } else {
+                          // 5連勤以上になる場合は元に戻す
+                          newCellShifts[staffId][swapDay] = originalShift;
+                          newCellShifts[staffId][otherDay] = "dayoff";
+                        }
+                      }
+                    }
+                  }
+                  break; // この連勤期間の調整は完了
+                }
+              }
+            }
+          }
+        }
+      }
+
       // シフトを適用
       cellShiftsRef.current = newCellShifts;
       forceUpdate();
